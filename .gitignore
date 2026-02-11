@@ -1,0 +1,8 @@
+qt-rewrite/build/CMakeFiles/iBMSCQt_autogen.dir/ParseCache.txt
+
+# macOS
+.DS_Store
+
+# CMake build dirs
+build/
+**/build/

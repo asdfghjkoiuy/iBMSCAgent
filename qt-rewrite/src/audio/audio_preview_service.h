@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QHash>
 #include <QUrl>
 
 QT_BEGIN_NAMESPACE
@@ -20,10 +21,12 @@ public:
     void stop();
 
 private:
-    QString resolvePlayablePath(const QString& absoluteOrRelativePath, const QString& rootDir) const;
+    QString resolvePlayablePath(const QString& absoluteOrRelativePath, const QString& rootDir);
 
     QMediaPlayer* m_player;
     QAudioOutput* m_output;
+    QString m_currentSourcePath;
+    QHash<QString, QString> m_resolveCache;
 };
 
 } // namespace ibmsc
