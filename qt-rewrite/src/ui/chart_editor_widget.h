@@ -101,6 +101,13 @@ private:
     int totalWidth() const;
     int totalHeight() const;
     double maxEditableVPos() const;
+    const ThemeColumn* themeColumnByIndex(int columnIndex) const;
+    bool isColumnVisibleByTheme(int columnIndex) const;
+    bool isColumnEditable(int columnIndex) const;
+    QVector<int> enabledColumnList() const;
+    int nearestEnabledColumn(int columnIndex) const;
+    int shiftEnabledColumn(int columnIndex, int delta) const;
+    QString displayColumnTitle(int columnIndex) const;
     int hitTestNote(const QPointF& localPos) const;
     void clearSelection();
     int selectedCount() const;
@@ -112,6 +119,8 @@ private:
     bool isChannelVisible(const BmsNote& note) const;
     void removeSelectedNotes();
     void ensureSorted();
+    void captureZoomAnchorFromGlobal(const QPoint& globalPos);
+    void applyZoomWithAnchor(double zoomValue);
 
     BmsDocument* m_doc = nullptr;
     const Theme* m_theme = nullptr;
@@ -162,6 +171,9 @@ private:
     int m_ntEditingIndex = -1;
     bool m_ntEditingExisting = false;
     double m_ntPressVPos = 0.0;
+    bool m_pinchZoomActive = false;
+    double m_zoomAnchorVPos = 0.0;
+    QPoint m_zoomAnchorViewportPos;
 };
 
 } // namespace ibmsc

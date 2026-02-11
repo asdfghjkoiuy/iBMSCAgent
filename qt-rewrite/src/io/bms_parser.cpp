@@ -114,6 +114,56 @@ QString normalizeChannel(const QString& channel) {
     return ch;
 }
 
+QString sanitizeResourcePath(const QString& raw) {
+    QString out = raw.trimmed();
+    bool inSingle = false;
+    bool inDouble = false;
+    int cut = -1;
+    for (int i = 0; i < out.size(); ++i) {
+        const QChar c = out[i];
+        if (c == '\'' && !inDouble) {
+            inSingle = !inSingle;
+            continue;
+        }
+        if (c == '"' && !inSingle) {
+            inDouble = !inDouble;
+            continue;
+        }
+        if (c == ';' && !inSingle && !inDouble) {
+            cut = i;
+            break;
+        }
+    }
+    if (cut >= 0) {
+        out = out.left(cut).trimmed();
+    }
+    if ((out.startsWith('"') && out.endsWith('"')) || (out.startsWith('\'') && out.endsWith('\''))) {
+        if (out.size() >= 2) {
+            out = out.mid(1, out.size() - 2);
+        }
+    }
+    return out.replace('\\', '/').trimmed();
+}
+
+bool parseIndexedDirective(const QString& line, int prefixLen, int* outIndex, QString* outPayload) {
+    if (!outIndex) {
+        return false;
+    }
+    const QString tail = line.mid(prefixLen).trimmed();
+    if (tail.size() < 2) {
+        return false;
+    }
+    const int idx = c36To10(tail.left(2));
+    if (idx <= 0) {
+        return false;
+    }
+    *outIndex = idx;
+    if (outPayload) {
+        *outPayload = tail.mid(2).trimmed();
+    }
+    return true;
+}
+
 } // namespace
 
 bool BmsParser::loadFromFile(const QString& filePath, BmsDocument& outDoc, QString* error) {
@@ -133,7 +183,7 @@ bool BmsParser::loadFromFile(const QString& filePath, BmsDocument& outDoc, QStri
     outDoc.clear();
     outDoc.sourcePath = filePath;
 
-    QRegularExpression noteLineRe("^#(\\d{3})([0-9A-Za-z]{2}):(.*)$");
+    QRegularExpression noteLineRe("^#(\\d{3})([0-9A-Za-z]{2,3}):(.*)$");
 
     int stackDepth = 0;
     for (const QString& rawLine : lines) {
@@ -165,37 +215,42 @@ bool BmsParser::loadFromFile(const QString& filePath, BmsDocument& outDoc, QStri
         }
 
         if (line.startsWith("#WAV", Qt::CaseInsensitive)) {
-            const int idx = c36To10(line.mid(4, 2));
-            if (idx >= 1 && idx < outDoc.wavTable.size()) {
-                outDoc.wavTable[idx] = line.mid(6).trimmed();
+            int idx = 0;
+            QString payload;
+            if (parseIndexedDirective(line, 4, &idx, &payload) && idx < outDoc.wavTable.size()) {
+                outDoc.wavTable[idx] = sanitizeResourcePath(payload);
             }
             continue;
         }
         if (line.startsWith("#BMP", Qt::CaseInsensitive)) {
-            const int idx = c36To10(line.mid(4, 2));
-            if (idx >= 1 && idx < outDoc.bmpTable.size()) {
-                outDoc.bmpTable[idx] = line.mid(6).trimmed();
+            int idx = 0;
+            QString payload;
+            if (parseIndexedDirective(line, 4, &idx, &payload) && idx < outDoc.bmpTable.size()) {
+                outDoc.bmpTable[idx] = sanitizeResourcePath(payload);
             }
             continue;
         }
         if (line.startsWith("#BPM", Qt::CaseInsensitive) && !line.mid(4, 1).trimmed().isEmpty()) {
-            const int idx = c36To10(line.mid(4, 2));
-            if (idx >= 1 && idx < outDoc.bpmTable.size()) {
-                outDoc.bpmTable[idx] = static_cast<qint64>(line.mid(6).trimmed().toDouble() * 10000.0);
+            int idx = 0;
+            QString payload;
+            if (parseIndexedDirective(line, 4, &idx, &payload) && idx < outDoc.bpmTable.size()) {
+                outDoc.bpmTable[idx] = static_cast<qint64>(payload.toDouble() * 10000.0);
             }
             continue;
         }
         if (line.startsWith("#STOP", Qt::CaseInsensitive)) {
-            const int idx = c36To10(line.mid(5, 2));
-            if (idx >= 1 && idx < outDoc.stopTable.size()) {
-                outDoc.stopTable[idx] = static_cast<qint64>(line.mid(7).trimmed().toDouble() * 10000.0);
+            int idx = 0;
+            QString payload;
+            if (parseIndexedDirective(line, 5, &idx, &payload) && idx < outDoc.stopTable.size()) {
+                outDoc.stopTable[idx] = static_cast<qint64>(payload.toDouble() * 10000.0);
             }
             continue;
         }
         if (line.startsWith("#SCROLL", Qt::CaseInsensitive)) {
-            const int idx = c36To10(line.mid(7, 2));
-            if (idx >= 1 && idx < outDoc.scrollTable.size()) {
-                outDoc.scrollTable[idx] = static_cast<qint64>(line.mid(9).trimmed().toDouble() * 10000.0);
+            int idx = 0;
+            QString payload;
+            if (parseIndexedDirective(line, 7, &idx, &payload) && idx < outDoc.scrollTable.size()) {
+                outDoc.scrollTable[idx] = static_cast<qint64>(payload.toDouble() * 10000.0);
             }
             continue;
         }
@@ -242,7 +297,6 @@ bool BmsParser::loadFromFile(const QString& filePath, BmsDocument& outDoc, QStri
 
     outDoc.recomputeMeasureBottom();
 
-    QMap<int, int> bColumnsPerMeasure;
     for (const QString& rawLine : lines) {
         const QString line = rawLine.trimmed();
         QRegularExpressionMatch m = noteLineRe.match(line);
@@ -260,11 +314,6 @@ bool BmsParser::loadFromFile(const QString& filePath, BmsDocument& outDoc, QStri
         int column = BmsDocument::channelToColumn(channel);
         if (column == 0) {
             continue;
-        }
-
-        if (channel == "01") {
-            bColumnsPerMeasure[measure] += 1;
-            column += (bColumnsPerMeasure[measure] - 1);
         }
 
         const int noteSlots = data.size() / 2;

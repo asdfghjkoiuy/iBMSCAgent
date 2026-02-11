@@ -18,6 +18,7 @@ public:
         QWidget* detail = nullptr;
         QCheckBox* switchBox = nullptr;
         QCheckBox* expanderBox = nullptr;
+        int minVisibleHeight = 0;
     };
 
     void registerSection(const Section& section);

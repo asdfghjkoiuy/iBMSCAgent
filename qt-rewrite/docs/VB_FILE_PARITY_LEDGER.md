@@ -1,51 +1,55 @@
-# VB File Parity Ledger
+# VB Function-Level Parity Ledger
 
-This ledger tracks one-to-one implementation parity from VB source files to Qt rewrite files.
+This ledger tracks VB -> Qt parity at function/event granularity.
 
 ## Status Legend
-- `DONE`: behavior and UI parity implemented.
-- `PARTIAL`: baseline exists but VB behavior has gaps.
+- `DONE`: Qt behavior/effect matches VB.
+- `IN_PROGRESS`: implemented partially, parity verification pending.
 - `MISSING`: not implemented.
 
-## Core Mapping
-| VB Source File | Qt Target File(s) | Status | Acceptance Criteria |
-|---|---|---|---|
-| `MainWindow.designer.vb` | `src/ui/main_window.cpp` | PARTIAL | PO stack layout, switches, expanders, resizers, menu/toolbar parity |
-| `MainWindow.vb` | `src/ui/main_window.cpp` | PARTIAL | menu/toolbar commands, option toggles, data panel choreography |
-| `PanelDraw.vb` | `src/ui/chart_editor_widget.cpp` | PARTIAL | draw layers, hover, waveform overlay, channel filter parity |
-| `PanelEvents.vb` | `src/ui/chart_editor_widget.cpp` | PARTIAL | write/select/time-select edge behavior parity |
-| `PanelKeyStates.vb` | `src/ui/chart_editor_widget.cpp` | PARTIAL | key state transitions parity |
-| `ChartIO.vb` | `src/io/bms_parser.cpp` | PARTIAL | parser/save branch parity and edge-case compatibility |
-| `BMS.vb` | `src/core/bms_document.cpp` | PARTIAL | channel semantics, measure math, table behavior parity |
-| `UndoRedo.vb` | `src/core/undo/*` | MISSING | command-style undo stack with VB command classes parity |
-| `EditorUndoRedo.vb` | `src/core/undo/*`, `src/ui/main_window.cpp` | MISSING | editor-integrated command dispatch parity |
-| `EditorPersistent.vb` | `src/core/settings/*`, `src/ui/main_window.cpp` | PARTIAL | full settings schema, locale/theme injection, panel state parity |
-| `VisualSettings.vb` | `src/theme/theme_loader.cpp` | PARTIAL | all visual fields mapped and applied |
-| `Waveform.vb` | `src/ui/chart_editor_widget.cpp`, `src/audio/*` | MISSING | waveform cache/render/options parity |
-| `Audio.vb` | `src/audio/audio_preview_service.cpp` | PARTIAL | full playback fallback and external player parity |
-| `MyO2.vb` | `src/ui/main_window.cpp` | PARTIAL | full algorithm and edge-case parity |
-| `Dialogs/diagFind.vb` | `src/ui/dialogs/diag_find_dialog.*` | MISSING | full filter logic and UI parity |
-| `Dialogs/dgStatistics.vb` | `src/ui/dialogs/statistics_dialog.*` | MISSING | full table parity |
-| `Dialogs/dgMyO2.vb` | `src/ui/dialogs/myo2_dialog.*` | MISSING | full data grid and workflow parity |
-| `Dialogs/dgImportSM.vb` | `src/ui/dialogs/import_sm_dialog.*` | MISSING | import pipeline parity |
-| `Dialogs/ColorPicker.vb` | `src/ui/dialogs/color_picker_dialog.*` | MISSING | HSL/RGB/A precision UI parity |
-| `Dialogs/AboutBox1.vb` | `src/ui/dialogs/about_dialog.*` | MISSING | visual and copy behavior parity |
-| `Dialogs/SplashScreen1.vb` | `src/ui/dialogs/splash_dialog.*` | MISSING | startup splash parity |
-| `Dialogs/fLoadFileProgress.vb` | `src/ui/dialogs/load_progress_dialog.*` | MISSING | progress/cancel behavior parity |
-| `SCompareMethod.vb` | `src/ui/dialogs/compare_method_dialog.*` | MISSING | compare strategy selection parity |
-| `Option Windows/OpGeneral.vb` | `src/ui/dialogs/op_general_dialog.*` | MISSING | options and persistence parity |
-| `Option Windows/OpVisual.vb` | `src/ui/dialogs/op_visual_dialog.*` | MISSING | visual settings editor parity |
-| `Option Windows/OpPlayer.vb` | `src/ui/dialogs/op_player_dialog.*` | MISSING | external player profile parity |
+## P0 Blockers
+| VB Source | VB Function/Event | Qt Target | Status | Acceptance Case |
+|---|---|---|---|---|
+| `iBMSC/iBMSC/EditorColumns.vb` | `BMSChannelToColumn`, `GetBMSChannelBy` | `qt-rewrite/src/core/bms_document.cpp` (`channelToColumn`, `columnToDefaultChannel`) | IN_PROGRESS | `COL-001` |
+| `iBMSC/iBMSC/EditorColumns.vb` | `nTitle`, `nEnabled`, `IsColumnSound`, `IsColumnNumeric` | `qt-rewrite/src/core/bms_document.cpp`, `qt-rewrite/src/theme/theme_loader.cpp`, `qt-rewrite/src/ui/chart_editor_widget.cpp` | IN_PROGRESS | `COL-002` |
+| `iBMSC/iBMSC/ChartIO.vb` | `#WAV/#BMP` parse/save | `qt-rewrite/src/io/bms_parser.cpp` | IN_PROGRESS | `IO-001` |
+| `iBMSC/iBMSC/MainWindow.vb` | `Form1_FormClosing` | `qt-rewrite/src/ui/main_window.cpp` (`closeEvent`) | IN_PROGRESS | `SAVE-001` |
+| `iBMSC/iBMSC/MainWindow.vb` | `POWAV_Resize`, `POBMP_Resize` | `qt-rewrite/src/ui/main_window.cpp`, `qt-rewrite/src/ui/po_panel_manager.cpp` | IN_PROGRESS | `UI-001` |
 
-## Resource Mapping
-| VB Resource Root | Qt Target | Status |
+## Input/Editing Core
+| VB Source | VB Function/Event | Qt Target | Status | Acceptance Case |
+|---|---|---|---|---|
+| `iBMSC/iBMSC/PanelEvents.vb` | `PMainInMouseDown`, `OnWriteModeMouseMove` | `qt-rewrite/src/ui/chart_editor_widget.cpp` (`mousePressEvent`, `mouseMoveEvent`) | IN_PROGRESS | `EDIT-001` |
+| `iBMSC/iBMSC/PanelEvents.vb` | `GetClickedNote`, `MouseInNote` | `qt-rewrite/src/ui/chart_editor_widget.cpp` (`hitTestNote`, NT hit logic) | IN_PROGRESS | `EDIT-002` |
+| `iBMSC/iBMSC/PanelEvents.vb` | `PMainInMouseUp` overwrite/remove rules | `qt-rewrite/src/ui/chart_editor_widget.cpp` (`applyWriteAt`, release handlers) | IN_PROGRESS | `EDIT-003` |
+| `iBMSC/iBMSC/PanelKeyStates.vb` | delete and modifier behavior | `qt-rewrite/src/ui/chart_editor_widget.cpp` (`keyPressEvent`) | IN_PROGRESS | `KEY-001` |
+| `iBMSC/iBMSC/PanelEvents.vb` | Ctrl-wheel zoom and scroll coupling | `qt-rewrite/src/ui/chart_editor_widget.cpp` (`wheelEvent`, `event`) | IN_PROGRESS | `ZOOM-001` |
+
+## Theme/Visual
+| VB Source | VB Function/Event | Qt Target | Status | Acceptance Case |
+|---|---|---|---|---|
+| `iBMSC/iBMSC/VisualSettings.vb` | visual fields load/apply | `qt-rewrite/src/theme/theme_loader.cpp` | IN_PROGRESS | `THEME-001` |
+| `iBMSC/iBMSC/PanelDraw.vb` | column captions and lane colors | `qt-rewrite/src/ui/chart_editor_widget.cpp` (`paintEvent`) | IN_PROGRESS | `DRAW-001` |
+
+## Dialog/Tooling Backlog
+| VB Source | Qt Target | Status |
 |---|---|---|
-| `My Project/Resources.resx` | `resources/ibmsc.qrc`, `src/ui/resource_catalog.*` | PARTIAL |
-| `ImageButtonsSmall/*` | `resources/ibmsc.qrc` | PARTIAL |
-| `ImageButtons/*` | `resources/ibmsc.qrc` | MISSING |
-| `MiscButtons/*` | `resources/ibmsc.qrc` | MISSING |
+| `Dialogs/dgStatistics.vb` | `qt-rewrite/src/ui/dialogs/statistics_dialog.cpp` | MISSING |
+| `Dialogs/dgMyO2.vb` | `qt-rewrite/src/ui/dialogs/myo2_dialog.cpp` | MISSING |
+| `Dialogs/dgImportSM.vb` | `qt-rewrite/src/ui/dialogs/import_sm_dialog.cpp` | MISSING |
+| `Option Windows/OpGeneral.vb` | `qt-rewrite/src/ui/dialogs/op_general_dialog.cpp` | MISSING |
+| `Option Windows/OpVisual.vb` | `qt-rewrite/src/ui/dialogs/op_visual_dialog.cpp` | MISSING |
+| `Option Windows/OpPlayer.vb` | `qt-rewrite/src/ui/dialogs/op_player_dialog.cpp` | MISSING |
+| `Dialogs/AboutBox1.vb` | `qt-rewrite/src/ui/dialogs/about_dialog.cpp` | MISSING |
+| `Dialogs/SplashScreen1.vb` | `qt-rewrite/src/ui/dialogs/splash_dialog.cpp` | MISSING |
 
-## Validation Backlog
-- [ ] Add IO golden tests under `tests/parity/io_golden/`.
-- [ ] Add interaction replay scripts under `tests/parity/interaction/`.
-- [ ] Add screenshot baseline set under `tests/parity/snapshots/`.
+## Immediate Acceptance Checklist
+- `COL-001`: same BMS channel hits same lane index as VB.
+- `COL-002`: lane labels/titles use VB naming semantics (`Measure/BPM/STOP/SCROLL/A*/D*/B*`).
+- `IO-001`: `#WAV/#BMP` remains stable after open/save/open.
+- `SAVE-001`: close without explicit save never overwrites source file.
+- `UI-001`: `WAV/OGG`, `BGI/BMP` panel heights do not collapse after reopen.
+- `EDIT-001`: write/select/NT operations maintain VB conflict and overwrite behavior.
+- `EDIT-002`: clicking LN body edits existing LN rather than creating stacked note.
+- `KEY-001`: mac keyboard delete works with both `Delete` and `Backspace`.
+- `ZOOM-001`: pinch and modifier zoom are viewport zoom, not scrollbar-range scaling.

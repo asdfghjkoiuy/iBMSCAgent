@@ -10,11 +10,20 @@ struct ThemeColumn {
     int index = 0;
     int width = 40;
     QString title;
+    int identifier = 0;
+    bool isNoteCol = false;
+    bool isNumeric = false;
+    bool isSound = false;
+    bool isVisible = true;
     QColor noteColor;
     QColor textColor;
     QColor longNoteColor;
     QColor longTextColor;
     QColor bgColor;
+
+    bool isEnabledAfterAll() const {
+        return isVisible && isNoteCol && width > 0;
+    }
 };
 
 struct ThemeVisual {

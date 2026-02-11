@@ -1869,6 +1869,8 @@ CMakeFiles/iBMSCQt.dir/src/audio/audio_preview_service.cpp.o: /Users/guanhao/VSC
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/audio/audio_preview_service.h \
   /opt/homebrew/lib/QtCore.framework/Headers/QDir \
   /opt/homebrew/lib/QtCore.framework/Headers/QFileInfo \
+  /opt/homebrew/lib/QtCore.framework/Headers/QHash \
+  /opt/homebrew/lib/QtCore.framework/Headers/QMetaObject \
   /opt/homebrew/lib/QtCore.framework/Headers/QObject \
   /opt/homebrew/lib/QtCore.framework/Headers/QUrl \
   /opt/homebrew/lib/QtCore.framework/Headers/q17memory.h \
@@ -2813,7 +2815,6 @@ CMakeFiles/iBMSCQt.dir/src/core/bms_document.cpp.o: /Users/guanhao/VSCodeAlgorit
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stddef.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/bms_document.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/QHash \
   /opt/homebrew/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/lib/QtCore.framework/Headers/QVector \
   /opt/homebrew/lib/QtCore.framework/Headers/QtMath \
@@ -2851,7 +2852,6 @@ CMakeFiles/iBMSCQt.dir/src/core/bms_document.cpp.o: /Users/guanhao/VSCodeAlgorit
   /opt/homebrew/lib/QtCore.framework/Headers/qgenericatomic.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qglobal.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qglobalstatic.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qhash.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qhashfunctions.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qiterator.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qlatin1stringview.h \
@@ -4635,7 +4635,6 @@ CMakeFiles/iBMSCQt.dir/src/core/undo/commands.cpp.o: /Users/guanhao/VSCodeAlgori
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/bms_document.h \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/undo/commands.h \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/undo/i_undo_command.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/QHash \
   /opt/homebrew/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/lib/QtCore.framework/Headers/QVector \
   /opt/homebrew/lib/QtCore.framework/Headers/q17memory.h \
@@ -4672,7 +4671,6 @@ CMakeFiles/iBMSCQt.dir/src/core/undo/commands.cpp.o: /Users/guanhao/VSCodeAlgori
   /opt/homebrew/lib/QtCore.framework/Headers/qgenericatomic.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qglobal.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qglobalstatic.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qhash.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qhashfunctions.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qiterator.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qlatin1stringview.h \
@@ -5569,7 +5567,6 @@ CMakeFiles/iBMSCQt.dir/src/io/bms_parser.cpp.o: /Users/guanhao/VSCodeAlgorithmTr
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/bms_document.h \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/io/bms_parser.h \
   /opt/homebrew/lib/QtCore.framework/Headers/QFile \
-  /opt/homebrew/lib/QtCore.framework/Headers/QHash \
   /opt/homebrew/lib/QtCore.framework/Headers/QMap \
   /opt/homebrew/lib/QtCore.framework/Headers/QRegularExpression \
   /opt/homebrew/lib/QtCore.framework/Headers/QString \
@@ -8498,7 +8495,6 @@ CMakeFiles/iBMSCQt.dir/src/ui/chart_editor_widget.cpp.o: /Users/guanhao/VSCodeAl
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/bms_document.h \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/theme/theme_loader.h \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/ui/chart_editor_widget.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/QHash \
   /opt/homebrew/lib/QtCore.framework/Headers/QList \
   /opt/homebrew/lib/QtCore.framework/Headers/QObject \
   /opt/homebrew/lib/QtCore.framework/Headers/QRect \
@@ -8696,12 +8692,14 @@ CMakeFiles/iBMSCQt.dir/src/ui/chart_editor_widget.cpp.o: /Users/guanhao/VSCodeAl
   /opt/homebrew/lib/QtGui.framework/Headers/qvector2d.h \
   /opt/homebrew/lib/QtGui.framework/Headers/qvectornd.h \
   /opt/homebrew/lib/QtGui.framework/Headers/qwindowdefs.h \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/QApplication \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QInputDialog \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QScrollArea \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QScrollBar \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QWidget \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qabstractscrollarea.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qabstractslider.h \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/qapplication.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qdialog.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qframe.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qinputdialog.h \
@@ -21368,6 +21366,7 @@ CMakeFiles/iBMSCQt.dir/src/ui/main_window.cpp.o: /Users/guanhao/VSCodeAlgorithmT
   /opt/homebrew/lib/QtCore.framework/Headers/QRegularExpression \
   /opt/homebrew/lib/QtCore.framework/Headers/QSet \
   /opt/homebrew/lib/QtCore.framework/Headers/QSettings \
+  /opt/homebrew/lib/QtCore.framework/Headers/QSignalBlocker \
   /opt/homebrew/lib/QtCore.framework/Headers/QSize \
   /opt/homebrew/lib/QtCore.framework/Headers/QSizeF \
   /opt/homebrew/lib/QtCore.framework/Headers/QString \
@@ -21626,6 +21625,7 @@ CMakeFiles/iBMSCQt.dir/src/ui/main_window.cpp.o: /Users/guanhao/VSCodeAlgorithmT
   /opt/homebrew/lib/QtWidgets.framework/Headers/QPushButton \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QScrollArea \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QScrollBar \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/QSizePolicy \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QSpinBox \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QSplitter \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QStatusBar \
@@ -22643,7 +22643,10 @@ CMakeFiles/iBMSCQt.dir/src/ui/po_panel_manager.cpp.o: /Users/guanhao/VSCodeAlgor
   /opt/homebrew/lib/QtGui.framework/Headers/qtguiglobal.h \
   /opt/homebrew/lib/QtGui.framework/Headers/qtransform.h \
   /opt/homebrew/lib/QtGui.framework/Headers/qwindowdefs.h \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/QCheckBox \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QWidget \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/qabstractbutton.h \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/qcheckbox.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qsizepolicy.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qtwidgets-config.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qtwidgetsexports.h \
@@ -23608,6 +23611,8 @@ CMakeFiles/iBMSCQt.dir/src/ui/resource_catalog.cpp.o: /Users/guanhao/VSCodeAlgor
 
 /opt/homebrew/lib/QtWidgets.framework/Headers/QTabWidget:
 
+/opt/homebrew/lib/QtWidgets.framework/Headers/QSizePolicy:
+
 /opt/homebrew/lib/QtWidgets.framework/Headers/QMenuBar:
 
 /opt/homebrew/lib/QtWidgets.framework/Headers/QLayout:
@@ -23805,6 +23810,8 @@ CMakeFiles/iBMSCQt.dir/src/ui/resource_catalog.cpp.o: /Users/guanhao/VSCodeAlgor
 /opt/homebrew/lib/QtCore.framework/Headers/qdatetime.h:
 
 /opt/homebrew/lib/QtCore.framework/Headers/qcalendar.h:
+
+/opt/homebrew/lib/QtCore.framework/Headers/QMetaObject:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/stack:
 
@@ -25859,6 +25866,8 @@ iBMSCQt_autogen/YPKJ5OE7LN/moc_main_window.cpp:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types/_blksize_t.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__memory/compressed_pair.h:
+
+/opt/homebrew/lib/QtCore.framework/Headers/QSignalBlocker:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/generate_n.h:
 

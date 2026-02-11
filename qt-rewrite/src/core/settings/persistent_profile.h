@@ -8,7 +8,7 @@ struct PersistentProfile {
     int snap = 16;
     bool ntInput = false;
     int mode = 0;
-    bool autoSave = true;
+    bool autoSave = false;
     bool previewOnClick = false;
     bool errorCheck = true;
     QStringList recentFiles;

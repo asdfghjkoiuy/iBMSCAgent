@@ -3,9 +3,9 @@ CMakeFiles/iBMSCQt.dir/src/core/undo/commands.cpp.o: \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/undo/commands.h \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/undo/i_undo_command.h \
   /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/src/core/bms_document.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/QHash \
-  /opt/homebrew/lib/QtCore.framework/Headers/qhash.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qalgorithms.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/QString \
+  /opt/homebrew/lib/QtCore.framework/Headers/qstring.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/qchar.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qglobal.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/type_traits \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__config \
@@ -704,15 +704,10 @@ CMakeFiles/iBMSCQt.dir/src/core/undo/commands.cpp.o: \
   /opt/homebrew/lib/QtCore.framework/Headers/qtresource.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qttranslation.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qversiontagging.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qcontainertools_impl.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qxptype_traits.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/q20type_traits.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qhashfunctions.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qstring.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qchar.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qcompare.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qstdlibdetection.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qcomparehelpers.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/q20type_traits.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/functional \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__functional/binary_negate.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__functional/bind.h \
@@ -852,6 +847,8 @@ CMakeFiles/iBMSCQt.dir/src/core/undo/commands.cpp.o: \
   /opt/homebrew/lib/QtCore.framework/Headers/qpair.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qarraydatapointer.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qarraydataops.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/qcontainertools_impl.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/qxptype_traits.h \
   /opt/homebrew/lib/QtCore.framework/Headers/q20functional.h \
   /opt/homebrew/lib/QtCore.framework/Headers/q20memory.h \
   /opt/homebrew/lib/QtCore.framework/Headers/q17memory.h \
@@ -867,6 +864,10 @@ CMakeFiles/iBMSCQt.dir/src/core/undo/commands.cpp.o: \
   /opt/homebrew/lib/QtCore.framework/Headers/qstringbuilder.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qstringconverter.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qstringconverter_base.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/QVector \
+  /opt/homebrew/lib/QtCore.framework/Headers/qvector.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/qlist.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/qhashfunctions.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/numeric \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__numeric/accumulate.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__numeric/adjacent_difference.h \
@@ -883,10 +884,7 @@ CMakeFiles/iBMSCQt.dir/src/core/undo/commands.cpp.o: \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/execution \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_execution_policy.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qiterator.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qlist.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qbytearraylist.h \
   /opt/homebrew/lib/QtCore.framework/Headers/qstringlist.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/qstringmatcher.h \
-  /opt/homebrew/lib/QtCore.framework/Headers/QString \
-  /opt/homebrew/lib/QtCore.framework/Headers/QVector \
-  /opt/homebrew/lib/QtCore.framework/Headers/qvector.h
+  /opt/homebrew/lib/QtCore.framework/Headers/qalgorithms.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/qstringmatcher.h

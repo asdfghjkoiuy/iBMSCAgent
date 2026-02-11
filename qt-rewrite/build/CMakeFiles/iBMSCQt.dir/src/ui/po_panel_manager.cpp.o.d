@@ -964,4 +964,7 @@ CMakeFiles/iBMSCQt.dir/src/ui/po_panel_manager.cpp.o: \
   /opt/homebrew/lib/QtGui.framework/Headers/qfontvariableaxis.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qsizepolicy.h \
   /opt/homebrew/lib/QtGui.framework/Headers/qcursor.h \
-  /opt/homebrew/lib/QtGui.framework/Headers/qbitmap.h
+  /opt/homebrew/lib/QtGui.framework/Headers/qbitmap.h \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/QCheckBox \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/qcheckbox.h \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/qabstractbutton.h

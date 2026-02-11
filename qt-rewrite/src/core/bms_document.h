@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QHash>
 #include <QString>
 #include <QVector>
 
@@ -51,8 +50,15 @@ public:
     double measureBottomAt(int idx) const;
     double measureLengthAt(int idx) const;
 
+    static int columnCount();
     static int channelToColumn(const QString& channel);
     static QString columnToDefaultChannel(int column);
+    static QString columnTitle(int column);
+    static int columnIdentifier(int column);
+    static bool isSoundColumn(int column);
+    static bool isNumericColumn(int column);
+    static bool isVisibleColumn(int column);
+    static bool isEnabledColumn(int column);
 
     QVector<BmsNote> notes;
     BmsHeader header;

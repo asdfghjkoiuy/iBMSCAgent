@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QMediaPlayer>
+#include <QMetaObject>
 #include <algorithm>
 
 namespace ibmsc {
@@ -17,12 +18,15 @@ QString normalizeAudioRef(QString in) {
     if (in.startsWith('\'') && in.endsWith('\'') && in.size() >= 2) {
         in = in.mid(1, in.size() - 2);
     }
+    const bool looksAbsolute = QFileInfo(in).isAbsolute();
     in = QDir::fromNativeSeparators(in);
     while (in.startsWith("./")) {
         in.remove(0, 2);
     }
-    while (in.startsWith('/')) {
-        in.remove(0, 1);
+    if (!looksAbsolute) {
+        while (in.startsWith('/')) {
+            in.remove(0, 1);
+        }
     }
     return in.trimmed();
 }
@@ -50,6 +54,44 @@ AudioPreviewService::AudioPreviewService(QObject* parent)
 }
 
 AudioPreviewService::~AudioPreviewService() = default;
+
+const QHash<QString, QString>& AudioPreviewService::rootFileIndex(const QString& normalizedRoot) {
+    const QString key = normalizedRoot.toLower();
+    auto it = m_rootFileIndexCache.find(key);
+    if (it != m_rootFileIndexCache.end()) {
+        return it.value();
+    }
+
+    QHash<QString, QString> index;
+    const QStringList roots = {normalizedRoot, normalizedRoot + "/wav", normalizedRoot + "/WAV"};
+    for (const QString& root : roots) {
+        const QDir dir(root);
+        if (!dir.exists()) {
+            continue;
+        }
+        const QFileInfoList files = dir.entryInfoList(QDir::Files | QDir::Readable | QDir::NoSymLinks | QDir::NoDotAndDotDot,
+                                                      QDir::Name);
+        for (const QFileInfo& f : files) {
+            const QString fileNameLower = f.fileName().toLower();
+            if (!index.contains(fileNameLower)) {
+                index.insert(fileNameLower, f.absoluteFilePath());
+            }
+
+            const QString completeBaseLower = f.completeBaseName().toLower();
+            const QString suffixLower = f.suffix().toLower();
+            if (!completeBaseLower.isEmpty() && (suffixLower == "wav" || suffixLower == "ogg")) {
+                const QString altExt = (suffixLower == "wav") ? QStringLiteral(".ogg") : QStringLiteral(".wav");
+                const QString altKey = completeBaseLower + altExt;
+                if (!index.contains(altKey)) {
+                    index.insert(altKey, f.absoluteFilePath());
+                }
+            }
+        }
+    }
+
+    it = m_rootFileIndexCache.insert(key, index);
+    return it.value();
+}
 
 QString AudioPreviewService::resolvePlayablePath(const QString& path, const QString& rootDir) {
     const QString normalizedRoot = QDir::cleanPath(QDir::fromNativeSeparators(rootDir));
@@ -122,21 +164,11 @@ QString AudioPreviewService::resolvePlayablePath(const QString& path, const QStr
 
     // Last fallback: same file name search under chart root and wav folders.
     const QString targetName = fi.fileName().toLower();
-    const QStringList roots = {normalizedRoot, normalizedRoot + "/wav", normalizedRoot + "/WAV"};
-    for (const QString& root : roots) {
-        const QDir dir(root);
-        if (!dir.exists()) {
-            continue;
-        }
-        const QFileInfoList files = dir.entryInfoList(QDir::Files | QDir::Readable | QDir::NoSymLinks | QDir::NoDotAndDotDot,
-                                                      QDir::Name);
-        for (const QFileInfo& f : files) {
-            if (f.fileName().toLower() == targetName) {
-                const QString resolved = f.absoluteFilePath();
-                m_resolveCache.insert(cacheKey, resolved);
-                return resolved;
-            }
-        }
+    const QHash<QString, QString>& index = rootFileIndex(normalizedRoot);
+    const auto hit = index.constFind(targetName);
+    if (hit != index.constEnd()) {
+        m_resolveCache.insert(cacheKey, hit.value());
+        return hit.value();
     }
 
     m_resolveCache.insert(cacheKey, QString());
@@ -148,13 +180,19 @@ void AudioPreviewService::play(const QString& absoluteOrRelativePath, const QStr
     if (resolved.isEmpty()) {
         return;
     }
-    if (m_currentSourcePath != resolved) {
-        m_currentSourcePath = resolved;
-        m_player->setSource(QUrl::fromLocalFile(resolved));
-    } else {
-        m_player->setPosition(0);
-    }
-    m_player->play();
+    const quint64 requestId = ++m_playRequestSerial;
+    QMetaObject::invokeMethod(this, [this, resolved, requestId]() {
+        if (requestId != m_playRequestSerial) {
+            return;
+        }
+        if (m_currentSourcePath != resolved) {
+            m_currentSourcePath = resolved;
+            m_player->setSource(QUrl::fromLocalFile(resolved));
+        } else {
+            m_player->setPosition(0);
+        }
+        m_player->play();
+    }, Qt::QueuedConnection);
 }
 
 void AudioPreviewService::stop() {

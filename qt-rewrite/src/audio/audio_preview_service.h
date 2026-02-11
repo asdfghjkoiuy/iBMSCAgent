@@ -22,11 +22,14 @@ public:
 
 private:
     QString resolvePlayablePath(const QString& absoluteOrRelativePath, const QString& rootDir);
+    const QHash<QString, QString>& rootFileIndex(const QString& normalizedRoot);
 
     QMediaPlayer* m_player;
     QAudioOutput* m_output;
     QString m_currentSourcePath;
     QHash<QString, QString> m_resolveCache;
+    QHash<QString, QHash<QString, QString>> m_rootFileIndexCache;
+    quint64 m_playRequestSerial = 0;
 };
 
 } // namespace ibmsc

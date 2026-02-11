@@ -10,7 +10,7 @@ PersistentProfile PersistentProfileStore::load() {
     profile.snap = settings.value("editor/snap", 16).toInt();
     profile.ntInput = settings.value("editor/nt_input", false).toBool();
     profile.mode = settings.value("editor/mode", 0).toInt();
-    profile.autoSave = settings.value("editor/autosave", true).toBool();
+    profile.autoSave = settings.value("editor/autosave", false).toBool();
     profile.previewOnClick = settings.value("editor/preview_on_click", false).toBool();
     profile.errorCheck = settings.value("editor/error_check", true).toBool();
     profile.recentFiles = settings.value("file/recent").toStringList();

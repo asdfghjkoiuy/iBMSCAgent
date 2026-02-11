@@ -41,11 +41,13 @@
 #include <QRegularExpressionValidator>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSizePolicy>
 #include <QShortcut>
 #include <QSpinBox>
 #include <QSplitter>
 #include <QStatusBar>
 #include <QSettings>
+#include <QSignalBlocker>
 #include <QDoubleSpinBox>
 #include <QTabWidget>
 #include <QTableWidget>
@@ -73,6 +75,7 @@ QWidget* makeHeaderTab(MainWindow* self,
                        QLineEdit*& subartist,
                        QLineEdit*& playLevel,
                        QLineEdit*& total,
+                       QComboBox*& player,
                        QLineEdit*& stageFile,
                        QLineEdit*& banner,
                        QLineEdit*& backBmp,
@@ -87,6 +90,10 @@ QWidget* makeHeaderTab(MainWindow* self,
     subartist = new QLineEdit(tab);
     playLevel = new QLineEdit(tab);
     total = new QLineEdit(tab);
+    player = new QComboBox(tab);
+    player->addItem("1 - Single Play", 1);
+    player->addItem("2 - Couple Play", 2);
+    player->addItem("3 - Double Play / PMS", 3);
     stageFile = new QLineEdit(tab);
     banner = new QLineEdit(tab);
     backBmp = new QLineEdit(tab);
@@ -112,6 +119,8 @@ QWidget* makeHeaderTab(MainWindow* self,
     tighten(subartist);
     tighten(playLevel);
     tighten(total);
+    player->setMinimumWidth(180);
+    player->setMaximumWidth(300);
     tighten(stageFile);
     tighten(banner);
     tighten(backBmp);
@@ -123,6 +132,7 @@ QWidget* makeHeaderTab(MainWindow* self,
     layout->addRow("SubArtist", subartist);
     layout->addRow("PlayLevel", playLevel);
     layout->addRow("TOTAL", total);
+    layout->addRow("Player", player);
     layout->addRow("StageFile", stageFile);
     layout->addRow("Banner", banner);
     layout->addRow("BackBMP", backBmp);
@@ -321,6 +331,39 @@ QVector<float> decodeAudioFileMono(const QString& absPath, QString* errorOut) {
 
     return out;
 }
+
+QStringList candidateThemeDirs() {
+    QStringList dirs;
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString cwd = QDir::currentPath();
+
+    const QStringList seeds = {
+        appDir,
+        QDir(appDir).absoluteFilePath(".."),
+        QDir(appDir).absoluteFilePath("../.."),
+        QDir(appDir).absoluteFilePath("../../.."),
+        cwd,
+        QDir(cwd).absoluteFilePath(".."),
+        QDir(cwd).absoluteFilePath("../.."),
+        QDir(cwd).absoluteFilePath("../../..")
+    };
+
+    for (const QString& seed : seeds) {
+        const QString path = QDir(seed).absoluteFilePath("iBMSC/misc/Data");
+        if (QDir(path).exists()) {
+            dirs << QDir(path).absolutePath();
+        }
+    }
+
+    // Fallback for this workspace layout.
+    const QString wsFallback = "/Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/iBMSC/misc/Data";
+    if (QDir(wsFallback).exists()) {
+        dirs << QDir(wsFallback).absolutePath();
+    }
+
+    dirs.removeDuplicates();
+    return dirs;
+}
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -345,6 +388,14 @@ MainWindow::MainWindow(QWidget* parent)
     m_autoSaveTimer->setInterval(120000);
     connect(m_autoSaveTimer, &QTimer::timeout, this, &MainWindow::onAutoSaveTick);
     m_autoSaveTimer->start();
+
+    m_errorCheckTimer = new QTimer(this);
+    m_errorCheckTimer->setSingleShot(true);
+    m_errorCheckTimer->setInterval(90);
+    connect(m_errorCheckTimer, &QTimer::timeout, this, [this]() {
+        m_errorCheckQueued = false;
+        runBasicErrorCheck();
+    });
 }
 
 void MainWindow::setupUi() {
@@ -413,9 +464,6 @@ void MainWindow::setupUi() {
     auto* valueLabel = new QLabel("Value", rightPanel);
 
     m_noteChannelCombo = new QComboBox(rightPanel);
-    for (int i = 1; i <= 72; ++i) {
-        m_noteChannelCombo->addItem(BmsDocument::columnToDefaultChannel(i));
-    }
     m_noteValueEdit = new QLineEdit(rightPanel);
     m_noteValueEdit->setMaxLength(2);
     m_noteValueEdit->setFixedWidth(48);
@@ -458,15 +506,18 @@ void MainWindow::setupUi() {
     poScroll->setWidgetResizable(true);
     poScroll->setFrameShape(QFrame::NoFrame);
     auto* poRoot = new QWidget(poScroll);
+    poRoot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
     auto* poLayout = new QVBoxLayout(poRoot);
     poLayout->setContentsMargins(0, 0, 0, 0);
     poLayout->setSpacing(6);
+    poLayout->setSizeConstraint(QLayout::SetMinimumSize);
     poScroll->setWidget(poRoot);
     rightLayout->addWidget(poScroll, 1);
 
     auto addPoSection = [this, poLayout](const QString& key, const QString& title, QWidget* body, bool withExpander) {
         auto* section = new QFrame();
         section->setObjectName("PoSection");
+        section->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
         auto* sectionLayout = new QVBoxLayout(section);
         sectionLayout->setContentsMargins(6, 6, 6, 6);
         sectionLayout->setSpacing(4);
@@ -492,10 +543,17 @@ void MainWindow::setupUi() {
             expander->setChecked(true);
             innerLayout->addWidget(expander);
         }
+        body->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         innerLayout->addWidget(body);
         sectionLayout->addWidget(inner);
 
-        m_poPanelManager.registerSection({key, section, inner, detail, switchBox, expander});
+        int sectionMin = 0;
+        if (key == "POWAV") {
+            sectionMin = 420;
+        } else if (key == "POBMP") {
+            sectionMin = 560;
+        }
+        m_poPanelManager.registerSection({key, section, inner, detail, switchBox, expander, sectionMin});
         connect(switchBox, &QCheckBox::toggled, this, [this, key](bool checked) {
             m_poPanelManager.applySwitchState(key, checked);
         });
@@ -515,6 +573,7 @@ void MainWindow::setupUi() {
                                        m_subartistEdit,
                                        m_playLevelEdit,
                                        m_totalEdit,
+                                       m_playerCombo,
                                        m_stageFileEdit,
                                        m_bannerEdit,
                                        m_backBmpEdit,
@@ -537,6 +596,13 @@ void MainWindow::setupUi() {
     m_cgScroll->setChecked(true);
     m_cgBlp = new QCheckBox("Show BLP channels", gridTab);
     m_cgBlp->setChecked(true);
+    auto* bColsRow = new QHBoxLayout();
+    bColsRow->addWidget(new QLabel("B Columns", gridTab));
+    m_bColumnsSpin = new QSpinBox(gridTab);
+    m_bColumnsSpin->setRange(1, 999);
+    m_bColumnsSpin->setValue(m_bColumnCount);
+    bColsRow->addWidget(m_bColumnsSpin);
+    bColsRow->addStretch(1);
     gridLayout->addWidget(m_cgShow);
     gridLayout->addWidget(m_cgShowBG);
     gridLayout->addWidget(m_cgShowV);
@@ -544,6 +610,7 @@ void MainWindow::setupUi() {
     gridLayout->addWidget(m_cgStop);
     gridLayout->addWidget(m_cgScroll);
     gridLayout->addWidget(m_cgBlp);
+    gridLayout->addLayout(bColsRow);
     gridLayout->addStretch(1);
     addPoSection("POGrid", "Grid", gridTab, true);
 
@@ -593,8 +660,11 @@ void MainWindow::setupUi() {
     m_wavTableWidget = new QTableWidget(wavTab);
     m_wavTableWidget->setColumnCount(2);
     m_wavTableWidget->setHorizontalHeaderLabels({"Code", "Path (.wav/.ogg)"});
+    m_wavTableWidget->verticalHeader()->setVisible(false);
     m_wavTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_wavTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    m_wavTableWidget->setMinimumHeight(260);
+    m_wavTableWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     wavLayout->addWidget(m_wavTableWidget);
 
     auto* wavButtons = new QHBoxLayout();
@@ -607,6 +677,8 @@ void MainWindow::setupUi() {
     wavButtons->addWidget(playWav);
     wavButtons->addWidget(stopWav);
     wavLayout->addLayout(wavButtons);
+    wavLayout->setStretch(0, 1);
+    wavTab->setMinimumHeight(360);
     addPoSection("POWAV", "WAV/OGG", wavTab, true);
 
     QWidget* bmpTab = new QWidget(this);
@@ -614,8 +686,11 @@ void MainWindow::setupUi() {
     m_bmpTableWidget = new QTableWidget(bmpTab);
     m_bmpTableWidget->setColumnCount(2);
     m_bmpTableWidget->setHorizontalHeaderLabels({"Code", "BGI Path"});
+    m_bmpTableWidget->verticalHeader()->setVisible(false);
     m_bmpTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_bmpTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    m_bmpTableWidget->setMinimumHeight(240);
+    m_bmpTableWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     bmpLayout->addWidget(m_bmpTableWidget);
 
     m_bgiPreview = new QLabel(bmpTab);
@@ -630,6 +705,8 @@ void MainWindow::setupUi() {
     bmpButtons->addWidget(addBmp);
     bmpButtons->addWidget(removeBmp);
     bmpLayout->addLayout(bmpButtons);
+    bmpLayout->setStretch(0, 1);
+    bmpTab->setMinimumHeight(520);
     addPoSection("POBMP", "BGI/BMP", bmpTab, false);
 
     QWidget* beatTab = new QWidget(this);
@@ -673,7 +750,11 @@ void MainWindow::setupUi() {
         else if (idx == 1) onModeSelect();
         else onModeTimeSelect();
     });
-    connect(m_noteChannelCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
+    connect(m_noteChannelCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
+        const QString text = m_noteChannelCombo->itemData(index).toString();
+        if (text.isEmpty()) {
+            return;
+        }
         for (const auto& editor : m_editors) {
             if (!editor) continue;
             editor->setDefaultChannel(text);
@@ -733,13 +814,28 @@ void MainWindow::setupUi() {
             editor->setDisplayOptions(opt);
         }
     };
-    connect(m_cgShow, &QCheckBox::toggled, this, [applyDisplayOptions](bool) { applyDisplayOptions(); });
-    connect(m_cgShowBG, &QCheckBox::toggled, this, [applyDisplayOptions](bool) { applyDisplayOptions(); });
-    connect(m_cgShowV, &QCheckBox::toggled, this, [applyDisplayOptions](bool) { applyDisplayOptions(); });
-    connect(m_cgBpm, &QCheckBox::toggled, this, [applyDisplayOptions](bool) { applyDisplayOptions(); });
-    connect(m_cgStop, &QCheckBox::toggled, this, [applyDisplayOptions](bool) { applyDisplayOptions(); });
-    connect(m_cgScroll, &QCheckBox::toggled, this, [applyDisplayOptions](bool) { applyDisplayOptions(); });
-    connect(m_cgBlp, &QCheckBox::toggled, this, [applyDisplayOptions](bool) { applyDisplayOptions(); });
+    auto onGridOptionChanged = [this, applyDisplayOptions]() {
+        applyDisplayOptions();
+        applyRuntimeColumnVisibility();
+        for (const auto& editor : m_editors) {
+            if (!editor) continue;
+            editor->setTheme(&m_theme);
+            editor->updateGeometry();
+            editor->update();
+        }
+        rebuildNoteChannelCombo();
+    };
+    connect(m_cgShow, &QCheckBox::toggled, this, [onGridOptionChanged](bool) { onGridOptionChanged(); });
+    connect(m_cgShowBG, &QCheckBox::toggled, this, [onGridOptionChanged](bool) { onGridOptionChanged(); });
+    connect(m_cgShowV, &QCheckBox::toggled, this, [onGridOptionChanged](bool) { onGridOptionChanged(); });
+    connect(m_cgBpm, &QCheckBox::toggled, this, [onGridOptionChanged](bool) { onGridOptionChanged(); });
+    connect(m_cgStop, &QCheckBox::toggled, this, [onGridOptionChanged](bool) { onGridOptionChanged(); });
+    connect(m_cgScroll, &QCheckBox::toggled, this, [onGridOptionChanged](bool) { onGridOptionChanged(); });
+    connect(m_cgBlp, &QCheckBox::toggled, this, [onGridOptionChanged](bool) { onGridOptionChanged(); });
+    connect(m_bColumnsSpin, &QSpinBox::valueChanged, this, [this, onGridOptionChanged](int value) {
+        m_bColumnCount = std::clamp(value, 1, 999);
+        onGridOptionChanged();
+    });
     applyDisplayOptions();
     applyWaveformOptionsToEditors();
     auto syncWriteMods = [this]() {
@@ -768,6 +864,7 @@ void MainWindow::setupUi() {
     connectHeader(m_subartistEdit);
     connectHeader(m_playLevelEdit);
     connectHeader(m_totalEdit);
+    connect(m_playerCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) { onHeaderEdited(); });
     connectHeader(m_stageFileEdit);
     connectHeader(m_bannerEdit);
     connectHeader(m_backBmpEdit);
@@ -1001,15 +1098,14 @@ void MainWindow::loadThemes() {
     m_themeCombo->clear();
 
     QStringList themePaths;
-    const QString workspaceThemeDir = QDir(QCoreApplication::applicationDirPath()).absoluteFilePath("../../iBMSC/misc/Data");
-    QDir d(workspaceThemeDir);
-    if (!d.exists()) {
-        d = QDir(QDir::current().absoluteFilePath("../iBMSC/misc/Data"));
-    }
-    if (d.exists()) {
+    const QStringList dirs = candidateThemeDirs();
+    for (const QString& dirPath : dirs) {
+        QDir d(dirPath);
         const QFileInfoList files = d.entryInfoList({"*.Theme.xml"}, QDir::Files | QDir::Readable, QDir::Name);
         for (const QFileInfo& fi : files) {
-            themePaths << fi.absoluteFilePath();
+            if (!themePaths.contains(fi.absoluteFilePath())) {
+                themePaths << fi.absoluteFilePath();
+            }
         }
     }
 
@@ -1027,16 +1123,133 @@ void MainWindow::loadThemes() {
 }
 
 void MainWindow::applyTheme(const Theme& theme) {
+    m_baseTheme = theme;
     m_theme = theme;
+    applyRuntimeColumnVisibility();
     for (const auto& editor : m_editors) {
             if (!editor) continue;
         editor->setTheme(&m_theme);
         editor->updateGeometry();
         editor->update();
     }
+    rebuildNoteChannelCombo();
+}
+
+void MainWindow::applyRuntimeColumnVisibility() {
+    if (m_baseTheme.columns.isEmpty()) {
+        return;
+    }
+
+    m_theme = m_baseTheme;
+
+    if (m_theme.columns.size() < 28) {
+        m_theme.columns.resize(28);
+    }
+
+    auto setVisible = [this](int index, bool visible) {
+        if (index < 0 || index >= m_theme.columns.size()) {
+            return;
+        }
+        m_theme.columns[index].isVisible = visible;
+    };
+
+    const bool showGp2 = m_doc.header.player != 1;
+    setVisible(14, showGp2); // D1
+    setVisible(15, showGp2); // D2
+    setVisible(16, showGp2); // D3
+    setVisible(17, showGp2); // D4
+    setVisible(18, showGp2); // D5
+    setVisible(19, showGp2); // D6
+    setVisible(20, showGp2); // D7
+    setVisible(21, showGp2); // D8
+    setVisible(22, showGp2); // S3
+
+    const bool showBlp = m_cgBlp ? m_cgBlp->isChecked() : true;
+    setVisible(23, showBlp); // BGA
+    setVisible(24, showBlp); // LAYER
+    setVisible(25, showBlp); // POOR
+    setVisible(26, showBlp); // S4
+
+    const bool showScroll = m_cgScroll ? m_cgScroll->isChecked() : true;
+    setVisible(1, showScroll);
+    const bool showBpm = m_cgBpm ? m_cgBpm->isChecked() : true;
+    setVisible(2, showBpm);
+    const bool showStop = m_cgStop ? m_cgStop->isChecked() : true;
+    setVisible(3, showStop);
+
+    const int bCount = std::clamp(m_bColumnCount, 1, 999);
+    const int targetSize = 27 + bCount;
+    if (m_theme.columns.size() < targetSize) {
+        m_theme.columns.resize(targetSize);
+    }
+    ThemeColumn baseB = m_theme.columns[27];
+    baseB.index = 27;
+    baseB.isVisible = true;
+    m_theme.columns[27] = baseB;
+    for (int i = 28; i < targetSize; ++i) {
+        ThemeColumn b = baseB;
+        b.index = i;
+        m_theme.columns[i] = b;
+    }
+}
+
+void MainWindow::rebuildNoteChannelCombo() {
+    if (!m_noteChannelCombo) {
+        return;
+    }
+    const QString previous = m_noteChannelCombo->currentData().toString();
+    m_noteChannelCombo->blockSignals(true);
+    m_noteChannelCombo->clear();
+
+    const int columnCount = m_theme.columns.size();
+    for (int i = 0; i < columnCount; ++i) {
+        const ThemeColumn& c = m_theme.columns[i];
+        if (!c.isEnabledAfterAll()) {
+            continue;
+        }
+        const QString channel = BmsDocument::columnToDefaultChannel(i);
+        if (channel.isEmpty()) {
+            continue;
+        }
+        const QString label = QString("%1 (%2)").arg(BmsDocument::columnTitle(i)).arg(channel);
+        m_noteChannelCombo->addItem(label, channel);
+    }
+    if (m_noteChannelCombo->count() == 0) {
+        m_noteChannelCombo->addItem("A2 (11)", "11");
+    }
+
+    int targetIndex = 0;
+    if (!previous.isEmpty()) {
+        for (int i = 0; i < m_noteChannelCombo->count(); ++i) {
+            if (m_noteChannelCombo->itemData(i).toString() == previous) {
+                targetIndex = i;
+                break;
+            }
+        }
+    }
+    m_noteChannelCombo->setCurrentIndex(targetIndex);
+    m_noteChannelCombo->blockSignals(false);
+
+    const QString currentChannel = m_noteChannelCombo->currentData().toString();
+    for (const auto& editor : m_editors) {
+        if (!editor) continue;
+        editor->setDefaultChannel(currentChannel.isEmpty() ? QStringLiteral("11") : currentChannel);
+    }
 }
 
 void MainWindow::syncHeaderToUi() {
+    const QSignalBlocker b1(m_titleEdit);
+    const QSignalBlocker b2(m_artistEdit);
+    const QSignalBlocker b3(m_genreEdit);
+    const QSignalBlocker b4(m_subtitleEdit);
+    const QSignalBlocker b5(m_subartistEdit);
+    const QSignalBlocker b6(m_playLevelEdit);
+    const QSignalBlocker b7(m_totalEdit);
+    const QSignalBlocker b8(m_playerCombo);
+    const QSignalBlocker b9(m_stageFileEdit);
+    const QSignalBlocker b10(m_bannerEdit);
+    const QSignalBlocker b11(m_backBmpEdit);
+    const QSignalBlocker b12(m_bpmEdit);
     m_titleEdit->setText(m_doc.header.title);
     m_artistEdit->setText(m_doc.header.artist);
     m_genreEdit->setText(m_doc.header.genre);
@@ -1044,6 +1257,9 @@ void MainWindow::syncHeaderToUi() {
     m_subartistEdit->setText(m_doc.header.subartist);
     m_playLevelEdit->setText(m_doc.header.playLevel);
     m_totalEdit->setText(m_doc.header.total);
+    const int player = std::clamp(m_doc.header.player, 1, 3);
+    const int idx = std::max(0, m_playerCombo->findData(player));
+    m_playerCombo->setCurrentIndex(idx);
     m_stageFileEdit->setText(m_doc.header.stageFile);
     m_bannerEdit->setText(m_doc.header.banner);
     m_backBmpEdit->setText(m_doc.header.backBmp);
@@ -1058,6 +1274,7 @@ void MainWindow::syncHeaderFromUi() {
     m_doc.header.subartist = m_subartistEdit->text();
     m_doc.header.playLevel = m_playLevelEdit->text();
     m_doc.header.total = m_totalEdit->text();
+    m_doc.header.player = std::clamp(m_playerCombo->currentData().toInt(), 1, 3);
     m_doc.header.stageFile = m_stageFileEdit->text();
     m_doc.header.banner = m_bannerEdit->text();
     m_doc.header.backBmp = m_backBmpEdit->text();
@@ -1124,9 +1341,71 @@ void MainWindow::refreshBeatTable() {
     m_beatTableWidget->blockSignals(false);
 }
 
+void MainWindow::syncResourceTablesToDocument() {
+    m_doc.wavTable.fill(QString());
+    for (int i = 0; i < m_wavTableWidget->rowCount(); ++i) {
+        auto* code = m_wavTableWidget->item(i, 0);
+        auto* val = m_wavTableWidget->item(i, 1);
+        if (!code || !val) {
+            continue;
+        }
+        const int idx = code->text().toInt(nullptr, 36);
+        if (idx > 0 && idx < m_doc.wavTable.size()) {
+            m_doc.wavTable[idx] = val->text().trimmed();
+        }
+    }
+
+    m_doc.bmpTable.fill(QString());
+    for (int i = 0; i < m_bmpTableWidget->rowCount(); ++i) {
+        auto* code = m_bmpTableWidget->item(i, 0);
+        auto* val = m_bmpTableWidget->item(i, 1);
+        if (!code || !val) {
+            continue;
+        }
+        const int idx = code->text().toInt(nullptr, 36);
+        if (idx > 0 && idx < m_doc.bmpTable.size()) {
+            m_doc.bmpTable[idx] = val->text().trimmed();
+        }
+    }
+
+    m_doc.measureLengths.fill(192.0);
+    for (int i = 0; i < m_beatTableWidget->rowCount(); ++i) {
+        auto* mItem = m_beatTableWidget->item(i, 0);
+        auto* rItem = m_beatTableWidget->item(i, 1);
+        if (!mItem || !rItem) {
+            continue;
+        }
+        bool okMeasure = false;
+        bool okRatio = false;
+        const int measure = mItem->text().toInt(&okMeasure);
+        const double ratio = rItem->text().toDouble(&okRatio);
+        if (!okMeasure || !okRatio) {
+            continue;
+        }
+        if (measure >= 0 && measure < m_doc.measureLengths.size() && ratio > 0.0) {
+            m_doc.measureLengths[measure] = ratio * 192.0;
+        }
+    }
+
+    m_doc.recomputeMeasureBottom();
+    m_doc.expansion = m_expansionEdit->toPlainText();
+}
+
+void MainWindow::scheduleErrorCheck() {
+    if (!m_errorCheckEnabled) {
+        return;
+    }
+    m_errorCheckQueued = true;
+    if (m_errorCheckTimer && !m_errorCheckTimer->isActive()) {
+        m_errorCheckTimer->start();
+    }
+}
+
 void MainWindow::applyDocumentToEditors() {
     m_suppressUndoCapture = true;
     syncHeaderToUi();
+    applyRuntimeColumnVisibility();
+    rebuildNoteChannelCombo();
     refreshResourceTables();
     refreshBeatTable();
     m_expansionEdit->blockSignals(true);
@@ -1134,6 +1413,7 @@ void MainWindow::applyDocumentToEditors() {
     m_expansionEdit->blockSignals(false);
     for (const auto& editor : m_editors) {
             if (!editor) continue;
+        editor->setTheme(&m_theme);
         editor->setDocument(&m_doc);
         editor->updateGeometry();
         editor->update();
@@ -1241,7 +1521,8 @@ void MainWindow::onSave() {
         return;
     }
 
-    onHeaderEdited();
+    syncHeaderFromUi();
+    syncResourceTablesToDocument();
 
     QString err;
     if (!BmsParser::saveToFile(m_doc.sourcePath, m_doc, &err)) {
@@ -1319,9 +1600,7 @@ void MainWindow::onWavSelectionChanged() {
         if (!editor) continue;
         editor->setDefaultValue(std::max(1, decoded) * 10000);
     }
-    if (!m_waveLockCheck || !m_waveLockCheck->isChecked()) {
-        loadWaveformOverlayFromWavSelection();
-    }
+    // Keep VB-like behavior: waveform overlay updates only when user clicks "Load".
 }
 
 void MainWindow::onBmpSelectionChanged() {
@@ -1347,57 +1626,26 @@ void MainWindow::onBmpSelectionChanged() {
 
 void MainWindow::onHeaderEdited() {
     syncHeaderFromUi();
+    applyRuntimeColumnVisibility();
+    for (const auto& editor : m_editors) {
+        if (!editor) continue;
+        editor->setTheme(&m_theme);
+        editor->updateGeometry();
+        editor->update();
+    }
+    rebuildNoteChannelCombo();
     onChartEdited();
 }
 
 void MainWindow::onChartEdited() {
-    m_doc.wavTable.fill(QString());
-    for (int i = 0; i < m_wavTableWidget->rowCount(); ++i) {
-        auto* code = m_wavTableWidget->item(i, 0);
-        auto* val = m_wavTableWidget->item(i, 1);
-        if (!code || !val) {
-            continue;
-        }
-        const int idx = code->text().toInt(nullptr, 36);
-        if (idx > 0 && idx < m_doc.wavTable.size()) {
-            m_doc.wavTable[idx] = val->text().trimmed();
-        }
+    if (m_suppressUndoCapture) {
+        return;
     }
-
-    m_doc.bmpTable.fill(QString());
-    for (int i = 0; i < m_bmpTableWidget->rowCount(); ++i) {
-        auto* code = m_bmpTableWidget->item(i, 0);
-        auto* val = m_bmpTableWidget->item(i, 1);
-        if (!code || !val) {
-            continue;
-        }
-        const int idx = code->text().toInt(nullptr, 36);
-        if (idx > 0 && idx < m_doc.bmpTable.size()) {
-            m_doc.bmpTable[idx] = val->text().trimmed();
-        }
+    const QObject* src = sender();
+    const bool fromEditor = src && qobject_cast<const ChartEditorWidget*>(src);
+    if (!fromEditor) {
+        syncResourceTablesToDocument();
     }
-
-    m_doc.measureLengths.fill(192.0);
-    for (int i = 0; i < m_beatTableWidget->rowCount(); ++i) {
-        auto* mItem = m_beatTableWidget->item(i, 0);
-        auto* rItem = m_beatTableWidget->item(i, 1);
-        if (!mItem || !rItem) {
-            continue;
-        }
-        bool okMeasure = false;
-        bool okRatio = false;
-        const int measure = mItem->text().toInt(&okMeasure);
-        const double ratio = rItem->text().toDouble(&okRatio);
-        if (!okMeasure || !okRatio) {
-            continue;
-        }
-        if (measure >= 0 && measure < m_doc.measureLengths.size() && ratio > 0.0) {
-            m_doc.measureLengths[measure] = ratio * 192.0;
-        }
-    }
-
-    m_doc.recomputeMeasureBottom();
-    m_doc.expansion = m_expansionEdit->toPlainText();
 
     if (m_pendingUndoSnapshot.has_value()) {
         m_undoStack.push(std::make_unique<SnapshotCommand>(*m_pendingUndoSnapshot, m_doc));
@@ -1406,12 +1654,14 @@ void MainWindow::onChartEdited() {
 
     for (const auto& editor : m_editors) {
             if (!editor) continue;
-        editor->updateGeometry();
+        if (!fromEditor) {
+            editor->updateGeometry();
+        }
         editor->update();
     }
 
     m_dirty = true;
-    runBasicErrorCheck();
+    scheduleErrorCheck();
     updateWindowTitle();
 }
 
@@ -1860,7 +2110,7 @@ void MainWindow::loadPersistentSettings() {
     m_ntInputCheck->setChecked(settings.value("editor/nt_input", false).toBool());
     const int mode = settings.value("editor/mode", static_cast<int>(ChartEditorWidget::EditMode::Write)).toInt();
     setMode(static_cast<ChartEditorWidget::EditMode>(std::clamp(mode, 0, 2)));
-    m_autoSaveEnabled = settings.value("editor/autosave", true).toBool();
+    m_autoSaveEnabled = settings.value("editor/autosave", false).toBool();
     m_previewOnClick = settings.value("editor/preview_on_click", false).toBool();
     m_errorCheckEnabled = settings.value("editor/error_check", true).toBool();
     if (m_waveWidthSpin) {
@@ -1878,6 +2128,18 @@ void MainWindow::loadPersistentSettings() {
     if (m_waveLockCheck) {
         m_waveLockCheck->setChecked(settings.value("waveform/lock", false).toBool());
     }
+    m_bColumnCount = std::clamp(settings.value("editor/b_columns", 20).toInt(), 1, 999);
+    if (m_bColumnsSpin) {
+        m_bColumnsSpin->setValue(m_bColumnCount);
+    }
+    applyRuntimeColumnVisibility();
+    for (const auto& editor : m_editors) {
+        if (!editor) continue;
+        editor->setTheme(&m_theme);
+        editor->updateGeometry();
+        editor->update();
+    }
+    rebuildNoteChannelCombo();
     applyWaveformOptionsToEditors();
 
     const QStringList poKeys = {"POHeader", "POGrid", "POWaveForm", "POWAV", "POBMP", "POBeat", "POExpansion"};
@@ -1909,6 +2171,7 @@ void MainWindow::savePersistentSettings() {
     settings.setValue("editor/autosave", m_autoSaveEnabled);
     settings.setValue("editor/preview_on_click", m_previewOnClick);
     settings.setValue("editor/error_check", m_errorCheckEnabled);
+    settings.setValue("editor/b_columns", std::clamp(m_bColumnCount, 1, 999));
     settings.setValue("waveform/width", m_waveWidthSpin ? m_waveWidthSpin->value() : 512);
     settings.setValue("waveform/offset", m_waveOffsetSpin ? m_waveOffsetSpin->value() : 0);
     settings.setValue("waveform/alpha", m_waveAlphaSpin ? m_waveAlphaSpin->value() : 110);
@@ -2057,6 +2320,30 @@ void MainWindow::runBasicErrorCheck() {
 
 void MainWindow::closeEvent(QCloseEvent* event) {
     m_closing = true;
+    if (m_autoSaveTimer) {
+        m_autoSaveTimer->stop();
+    }
+    if (m_dirty) {
+        const QMessageBox::StandardButton btn = QMessageBox::question(
+            this,
+            "Unsaved Changes",
+            "Chart has unsaved changes.\nSave before closing?",
+            QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel,
+            QMessageBox::Cancel);
+        if (btn == QMessageBox::Cancel) {
+            m_closing = false;
+            event->ignore();
+            return;
+        }
+        if (btn == QMessageBox::Save) {
+            onSave();
+            if (m_dirty) {
+                m_closing = false;
+                event->ignore();
+                return;
+            }
+        }
+    }
     savePersistentSettings();
     QMainWindow::closeEvent(event);
 }

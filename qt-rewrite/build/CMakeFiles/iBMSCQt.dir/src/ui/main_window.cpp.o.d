@@ -1142,6 +1142,7 @@ CMakeFiles/iBMSCQt.dir/src/ui/main_window.cpp.o: \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qscrollarea.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QScrollBar \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qscrollbar.h \
+  /opt/homebrew/lib/QtWidgets.framework/Headers/QSizePolicy \
   /opt/homebrew/lib/QtGui.framework/Headers/QShortcut \
   /opt/homebrew/lib/QtGui.framework/Headers/qshortcut.h \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QSpinBox \
@@ -1152,6 +1153,7 @@ CMakeFiles/iBMSCQt.dir/src/ui/main_window.cpp.o: \
   /opt/homebrew/lib/QtWidgets.framework/Headers/qstatusbar.h \
   /opt/homebrew/lib/QtCore.framework/Headers/QSettings \
   /opt/homebrew/lib/QtCore.framework/Headers/qsettings.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/QSignalBlocker \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QDoubleSpinBox \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QTabWidget \
   /opt/homebrew/lib/QtWidgets.framework/Headers/QTableWidget \

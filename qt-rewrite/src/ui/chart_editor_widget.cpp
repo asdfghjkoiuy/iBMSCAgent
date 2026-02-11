@@ -1,5 +1,6 @@
 #include "ui/chart_editor_widget.h"
 
+#include <QApplication>
 #include <QFocusEvent>
 #include <QInputDialog>
 #include <QKeyEvent>
@@ -45,6 +46,22 @@ int parseBase36Label(const QString& text) {
     }
     return v;
 }
+
+int lowerBoundByVPos(const QVector<BmsNote>& notes, double value) {
+    const auto it = std::lower_bound(notes.begin(), notes.end(), value, [](const BmsNote& note, double v) {
+        return note.vPosition < v;
+    });
+    return static_cast<int>(std::distance(notes.begin(), it));
+}
+
+int upperBoundByVPos(const QVector<BmsNote>& notes, double value) {
+    const auto it = std::upper_bound(notes.begin(), notes.end(), value, [](double v, const BmsNote& note) {
+        return v < note.vPosition;
+    });
+    return static_cast<int>(std::distance(notes.begin(), it));
+}
+
+constexpr double kVisibleLookbackV = 8192.0;
 } // namespace
 
 ChartEditorWidget::ChartEditorWidget(QWidget* parent)
@@ -136,8 +153,17 @@ QSize ChartEditorWidget::sizeHint() const {
 }
 
 int ChartEditorWidget::columnWidth(int columnIndex) const {
-    if (m_theme && columnIndex >= 0 && columnIndex < m_theme->columns.size()) {
-        return std::max(10, m_theme->columns[columnIndex].width);
+    if (const ThemeColumn* c = themeColumnByIndex(columnIndex)) {
+        if (!c->isVisible) {
+            return 0;
+        }
+        return std::max(0, c->width);
+    }
+    if (columnIndex < 0 || columnIndex >= BmsDocument::columnCount()) {
+        return 0;
+    }
+    if (!BmsDocument::isVisibleColumn(columnIndex)) {
+        return 0;
     }
     return 40;
 }
@@ -145,11 +171,11 @@ int ChartEditorWidget::columnWidth(int columnIndex) const {
 int ChartEditorWidget::totalWidth() const {
     int width = 0;
     if (m_theme && !m_theme->columns.isEmpty()) {
-        for (const ThemeColumn& c : m_theme->columns) {
-            width += std::max(10, c.width);
+        for (int i = 0; i < m_theme->columns.size(); ++i) {
+            width += columnWidth(i);
         }
     } else {
-        width = 72 * 24;
+        width = BmsDocument::columnCount() * 40;
     }
     return width + 1;
 }
@@ -189,9 +215,97 @@ double ChartEditorWidget::maxEditableVPos() const {
     return std::max(0.0, m_doc->measureBottomAt(last) + m_doc->measureLengthAt(last) - 1.0);
 }
 
+const ThemeColumn* ChartEditorWidget::themeColumnByIndex(int columnIndex) const {
+    if (!m_theme || m_theme->columns.isEmpty()) {
+        return nullptr;
+    }
+    if (columnIndex < 0 || columnIndex >= m_theme->columns.size()) {
+        return nullptr;
+    }
+    return &m_theme->columns[columnIndex];
+}
+
+bool ChartEditorWidget::isColumnVisibleByTheme(int columnIndex) const {
+    if (const ThemeColumn* c = themeColumnByIndex(columnIndex)) {
+        return c->isVisible && c->width > 0;
+    }
+    return BmsDocument::isVisibleColumn(columnIndex);
+}
+
+bool ChartEditorWidget::isColumnEditable(int columnIndex) const {
+    if (columnIndex < 0) {
+        return false;
+    }
+    if (const ThemeColumn* c = themeColumnByIndex(columnIndex)) {
+        return c->isEnabledAfterAll();
+    }
+    return BmsDocument::isEnabledColumn(columnIndex);
+}
+
+QVector<int> ChartEditorWidget::enabledColumnList() const {
+    QVector<int> cols;
+    const int colCount = m_theme && !m_theme->columns.isEmpty() ? m_theme->columns.size() : BmsDocument::columnCount();
+    cols.reserve(colCount);
+    for (int i = 0; i < colCount; ++i) {
+        if (isColumnEditable(i)) {
+            cols.push_back(i);
+        }
+    }
+    return cols;
+}
+
+int ChartEditorWidget::nearestEnabledColumn(int columnIndex) const {
+    const QVector<int> cols = enabledColumnList();
+    if (cols.isEmpty()) {
+        return -1;
+    }
+    if (columnIndex < cols.first()) {
+        return cols.first();
+    }
+    if (columnIndex > cols.last()) {
+        return cols.last();
+    }
+    int best = cols.first();
+    int bestDist = std::abs(best - columnIndex);
+    for (const int c : cols) {
+        const int d = std::abs(c - columnIndex);
+        if (d < bestDist) {
+            best = c;
+            bestDist = d;
+        }
+    }
+    return best;
+}
+
+int ChartEditorWidget::shiftEnabledColumn(int columnIndex, int delta) const {
+    const QVector<int> cols = enabledColumnList();
+    if (cols.isEmpty()) {
+        return columnIndex;
+    }
+    const int normalized = nearestEnabledColumn(columnIndex);
+    int idx = cols.indexOf(normalized);
+    if (idx < 0) {
+        idx = 0;
+    }
+    idx = std::clamp(idx + delta, 0, static_cast<int>(cols.size()) - 1);
+    return cols[idx];
+}
+
+QString ChartEditorWidget::displayColumnTitle(int columnIndex) const {
+    if (BmsDocument::columnIdentifier(columnIndex) == 1 && columnIndex >= 27) {
+        return BmsDocument::columnTitle(columnIndex);
+    }
+    if (const ThemeColumn* c = themeColumnByIndex(columnIndex)) {
+        if (!c->title.trimmed().isEmpty()) {
+            return c->title;
+        }
+    }
+    return BmsDocument::columnTitle(columnIndex);
+}
+
 int ChartEditorWidget::columnX(int columnIndex) const {
     int x = 0;
-    const int idx = std::max(0, columnIndex - 1);
+    const int idx = std::max(0, columnIndex);
     for (int i = 0; i < idx; ++i) {
         x += columnWidth(i);
     }
@@ -199,12 +313,18 @@ int ChartEditorWidget::columnX(int columnIndex) const {
 }
 
 int ChartEditorWidget::columnAtX(int x) const {
+    if (x < 0) {
+        return -1;
+    }
     int left = 0;
-    const int colCount = m_theme && !m_theme->columns.isEmpty() ? m_theme->columns.size() : 72;
+    const int colCount = m_theme && !m_theme->columns.isEmpty() ? m_theme->columns.size() : BmsDocument::columnCount();
     for (int i = 0; i < colCount; ++i) {
         const int w = columnWidth(i);
+        if (w <= 0) {
+            continue;
+        }
         if (x >= left && x < left + w) {
-            return i + 1;
+            return i;
         }
         left += w;
     }
@@ -235,7 +355,11 @@ double ChartEditorWidget::yToVPos(int y, bool applySnap) const {
 
 QRect ChartEditorWidget::noteRect(const BmsNote& note) const {
     const int x = columnX(note.columnIndex);
-    const int w = std::max(8, columnWidth(note.columnIndex - 1));
+    const int rawW = columnWidth(note.columnIndex);
+    if (rawW <= 0) {
+        return QRect();
+    }
+    const int w = std::max(8, rawW);
     const int yHead = vPosToY(note.vPosition);
     if (m_ntInput && note.length > 0.0) {
         const int yTail = vPosToY(note.vPosition + note.length);
@@ -250,8 +374,14 @@ int ChartEditorWidget::hitTestNote(const QPointF& localPos) const {
     if (!m_doc) {
         return -1;
     }
-    for (int i = static_cast<int>(m_doc->notes.size()) - 1; i >= 0; --i) {
-        if (m_doc->notes[i].vPosition < 0) {
+    const double targetV = yToVPos(static_cast<int>(std::round(localPos.y())), false);
+    const double scanMinV = std::max(0.0, targetV - kVisibleLookbackV);
+    const double scanMaxV = targetV + 64.0;
+    const int noteCount = static_cast<int>(m_doc->notes.size());
+    const int begin = std::clamp(lowerBoundByVPos(m_doc->notes, scanMinV), 0, noteCount);
+    const int end = std::clamp(upperBoundByVPos(m_doc->notes, scanMaxV), begin, noteCount);
+    for (int i = end - 1; i >= begin; --i) {
+        if (m_doc->notes[i].vPosition < 0.0) {
             continue;
         }
         if (!isChannelVisible(m_doc->notes[i])) {
@@ -291,11 +421,20 @@ void ChartEditorWidget::selectInRect(const QRect& rect, bool append) {
     if (!append) {
         clearSelection();
     }
-    for (BmsNote& n : m_doc->notes) {
+    const QRect normalized = rect.normalized();
+    const double v1 = yToVPos(normalized.bottom() + 16, false);
+    const double v2 = yToVPos(normalized.top() - 16, false);
+    const double scanMinV = std::max(0.0, std::min(v1, v2) - kVisibleLookbackV);
+    const double scanMaxV = std::max(v1, v2) + 16.0;
+    const int noteCount = static_cast<int>(m_doc->notes.size());
+    const int begin = std::clamp(lowerBoundByVPos(m_doc->notes, scanMinV), 0, noteCount);
+    const int end = std::clamp(upperBoundByVPos(m_doc->notes, scanMaxV), begin, noteCount);
+    for (int i = begin; i < end; ++i) {
+        BmsNote& n = m_doc->notes[i];
         if (n.vPosition < 0) {
             continue;
         }
-        if (rect.intersects(noteRect(n))) {
+        if (normalized.intersects(noteRect(n))) {
             n.selected = true;
         }
     }
@@ -309,14 +448,13 @@ void ChartEditorWidget::moveSelectedNotes(int dCol, double dVPos) {
     if (!m_doc) {
         return;
     }
-    const int colCount = m_theme && !m_theme->columns.isEmpty() ? m_theme->columns.size() : 72;
     const int maxMeasure = std::max(0, static_cast<int>(m_doc->measureBottom.size()) - 1);
     const double maxV = std::max(0.0, m_doc->measureBottomAt(maxMeasure) + m_doc->measureLengthAt(maxMeasure) - 1.0);
     for (BmsNote& n : m_doc->notes) {
         if (!n.selected || n.vPosition < 0) {
             continue;
         }
-        n.columnIndex = std::clamp(n.columnIndex + dCol, 1, colCount);
+        n.columnIndex = shiftEnabledColumn(n.columnIndex, dCol);
         n.vPosition = std::max(0.0, n.vPosition + dVPos);
         if (m_ntInput && n.length > 0.0 && n.vPosition + n.length > maxV) {
             n.vPosition = std::max(0.0, maxV - n.length);
@@ -326,21 +464,53 @@ void ChartEditorWidget::moveSelectedNotes(int dCol, double dVPos) {
 }
 
 void ChartEditorWidget::applySelectDragMove(int targetCol, double targetVPos) {
-    if (!m_doc || m_selectDragBaseNotes.isEmpty() || m_selectDragAnchorCol <= 0) {
+    if (!m_doc || m_selectDragBaseNotes.isEmpty() || m_selectDragAnchorCol < 0) {
         return;
     }
 
-    int dCol = targetCol - m_selectDragAnchorCol;
+    const QVector<int> cols = enabledColumnList();
+    if (cols.isEmpty()) {
+        return;
+    }
+    auto enabledOrdinal = [&cols](int column) {
+        int idx = cols.indexOf(column);
+        if (idx >= 0) {
+            return idx;
+        }
+        if (column <= cols.first()) return 0;
+        if (column >= cols.last()) return static_cast<int>(cols.size()) - 1;
+        int nearest = 0;
+        int bestDist = std::abs(cols[0] - column);
+        for (int i = 1; i < cols.size(); ++i) {
+            const int d = std::abs(cols[i] - column);
+            if (d < bestDist) {
+                nearest = i;
+                bestDist = d;
+            }
+        }
+        return nearest;
+    };
+
+    const int anchorOrd = enabledOrdinal(m_selectDragAnchorCol);
+    const int targetOrd = enabledOrdinal(targetCol);
+    int dCol = targetOrd - anchorOrd;
     double dVPos = targetVPos - m_selectDragAnchorVPos;
 
-    int minCol = 999999;
+    int minOrd = std::numeric_limits<int>::max();
+    int maxOrd = std::numeric_limits<int>::min();
     double minV = 1e18;
     for (const DragNoteState& base : m_selectDragBaseNotes) {
-        minCol = std::min(minCol, base.column + dCol);
+        const int ord = enabledOrdinal(base.column) + dCol;
+        minOrd = std::min(minOrd, ord);
+        maxOrd = std::max(maxOrd, ord);
         minV = std::min(minV, base.vPosition + dVPos);
     }
-    if (minCol < 1) {
-        dCol += 1 - minCol;
+    if (minOrd < 0) {
+        dCol += -minOrd;
+    }
+    const int maxOrdAllowed = static_cast<int>(cols.size()) - 1;
+    if (maxOrd > maxOrdAllowed) {
+        dCol -= (maxOrd - maxOrdAllowed);
     }
     if (minV < 0.0) {
         dVPos += -minV;
@@ -367,7 +537,8 @@ void ChartEditorWidget::applySelectDragMove(int targetCol, double targetVPos) {
             continue;
         }
         BmsNote& n = m_doc->notes[base.index];
-        n.columnIndex = std::max(1, base.column + dCol);
+        const int ord = std::clamp(enabledOrdinal(base.column) + dCol, 0, maxOrdAllowed);
+        n.columnIndex = cols[ord];
         n.vPosition = std::max(0.0, base.vPosition + dVPos);
     }
     ensureSorted();
@@ -378,7 +549,7 @@ bool ChartEditorWidget::applyWriteAt(const QPointF& pos, Qt::MouseButton button,
         return false;
     }
     const int col = columnAtX(pos.x());
-    if (col <= 0) {
+    if (!isColumnEditable(col)) {
         return false;
     }
 
@@ -474,6 +645,44 @@ void ChartEditorWidget::ensureSorted() {
     });
 }
 
+void ChartEditorWidget::captureZoomAnchorFromGlobal(const QPoint& globalPos) {
+    QScrollArea* scrollArea = qobject_cast<QScrollArea*>(parentWidget() ? parentWidget()->parentWidget() : nullptr);
+    if (!scrollArea) {
+        scrollArea = qobject_cast<QScrollArea*>(parentWidget());
+    }
+    if (!scrollArea || !scrollArea->verticalScrollBar()) {
+        m_zoomAnchorViewportPos = QPoint(width() / 2, height() / 2);
+        m_zoomAnchorVPos = yToVPos(m_zoomAnchorViewportPos.y(), false);
+        return;
+    }
+
+    m_zoomAnchorViewportPos = scrollArea->viewport()->mapFromGlobal(globalPos);
+    const int oldScrollY = scrollArea->verticalScrollBar()->value();
+    const int anchorContentY = oldScrollY + m_zoomAnchorViewportPos.y();
+    m_zoomAnchorVPos = yToVPos(anchorContentY, false);
+}
+
+void ChartEditorWidget::applyZoomWithAnchor(double zoomValue) {
+    const double oldZoom = m_zoom;
+    const double newZoom = std::clamp(zoomValue, 0.8, 10.0);
+    if (std::abs(newZoom - oldZoom) < 1e-6) {
+        return;
+    }
+    m_zoom = newZoom;
+    updateGeometry();
+
+    QScrollArea* scrollArea = qobject_cast<QScrollArea*>(parentWidget() ? parentWidget()->parentWidget() : nullptr);
+    if (!scrollArea) {
+        scrollArea = qobject_cast<QScrollArea*>(parentWidget());
+    }
+    if (scrollArea && scrollArea->verticalScrollBar()) {
+        const int newAnchorY = vPosToY(m_zoomAnchorVPos);
+        const int targetScrollY = newAnchorY - m_zoomAnchorViewportPos.y();
+        scrollArea->verticalScrollBar()->setValue(targetScrollY);
+    }
+    update();
+}
+
 void ChartEditorWidget::paintEvent(QPaintEvent* event) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
@@ -484,20 +693,21 @@ void ChartEditorWidget::paintEvent(QPaintEvent* event) {
     }
     p.fillRect(rect(), bg);
 
-    const int colCount = m_theme && !m_theme->columns.isEmpty() ? m_theme->columns.size() : 72;
+    const int colCount = m_theme && !m_theme->columns.isEmpty() ? m_theme->columns.size() : BmsDocument::columnCount();
     int x = 0;
     for (int i = 0; i < colCount; ++i) {
         const int w = columnWidth(i);
+        if (w <= 0) {
+            continue;
+        }
         QColor colBg = QColor(30, 30, 30, 90);
         QColor txt = QColor(220, 220, 220);
-        QString title = QString("C%1").arg(i);
-        if (m_theme && i < m_theme->columns.size()) {
-            const ThemeColumn& c = m_theme->columns[i];
-            if (c.bgColor.isValid() && c.bgColor.alpha() > 0) {
-                colBg = c.bgColor;
+        QString title = displayColumnTitle(i);
+        if (const ThemeColumn* c = themeColumnByIndex(i)) {
+            if (c->bgColor.isValid() && c->bgColor.alpha() > 0) {
+                colBg = c->bgColor;
             }
-            txt = c.textColor.isValid() ? c.textColor : txt;
-            title = c.title;
+            txt = c->textColor.isValid() ? c->textColor : txt;
         }
 
         if (m_displayOptions.showColumnBackgrounds) {
@@ -579,14 +789,14 @@ void ChartEditorWidget::paintEvent(QPaintEvent* event) {
         p.drawLine(0, y2, totalWidth(), y2);
     }
 
-    if (m_mode == EditMode::Write && m_hoverValid && m_hoverColumn > 0 && m_hoverVPos >= 0.0) {
+    if (m_mode == EditMode::Write && m_hoverValid && m_hoverColumn >= 0 && isColumnEditable(m_hoverColumn) && m_hoverVPos >= 0.0) {
         BmsNote ghost;
         ghost.columnIndex = m_hoverColumn;
         ghost.vPosition = m_hoverVPos;
         QRect gr = noteRect(ghost);
         QColor ghostFill(180, 220, 255, 90);
-        if (m_theme && m_hoverColumn - 1 >= 0 && m_hoverColumn - 1 < m_theme->columns.size()) {
-            ghostFill = m_theme->columns[m_hoverColumn - 1].noteColor;
+        if (const ThemeColumn* c = themeColumnByIndex(m_hoverColumn)) {
+            ghostFill = c->noteColor;
             ghostFill.setAlpha(90);
         }
         p.setPen(QPen(QColor(200, 240, 255, 220), 1, Qt::DashLine));
@@ -638,7 +848,11 @@ void ChartEditorWidget::paintEvent(QPaintEvent* event) {
     const double noteMinV = std::max(0.0, visibleMinV - 64.0);
     const double noteMaxV = visibleMaxV + 64.0;
 
-    for (const BmsNote& note : m_doc->notes) {
+    const int noteCount = static_cast<int>(m_doc->notes.size());
+    const int begin = std::clamp(lowerBoundByVPos(m_doc->notes, noteMinV - kVisibleLookbackV), 0, noteCount);
+    const int end = std::clamp(upperBoundByVPos(m_doc->notes, noteMaxV + 64.0), begin, noteCount);
+    for (int i = begin; i < end; ++i) {
+        const BmsNote& note = m_doc->notes[i];
         if (note.vPosition < 0.0) {
             continue;
         }
@@ -656,9 +870,8 @@ void ChartEditorWidget::paintEvent(QPaintEvent* event) {
         }
 
         QColor fill = QColor(245, 190, 70, 220);
-        if (m_theme && note.columnIndex - 1 >= 0 && note.columnIndex - 1 < m_theme->columns.size()) {
-            const ThemeColumn& c = m_theme->columns[note.columnIndex - 1];
-            fill = note.longNote ? c.longNoteColor : c.noteColor;
+        if (const ThemeColumn* c = themeColumnByIndex(note.columnIndex)) {
+            fill = note.longNote ? c->longNoteColor : c->noteColor;
             if (!fill.isValid()) {
                 fill = QColor(245, 190, 70, 220);
             }
@@ -770,7 +983,7 @@ void ChartEditorWidget::mousePressEvent(QMouseEvent* event) {
 
                 m_selectDragActive = true;
                 m_selectDragMoved = false;
-                m_selectDragAnchorCol = columnAtX(event->position().x());
+                m_selectDragAnchorCol = m_doc->notes[hit].columnIndex;
                 m_selectDragAnchorVPos = std::max(0.0, yToVPos(event->position().y(), true));
                 m_selectDragBaseNotes.clear();
                 for (int i = 0; i < m_doc->notes.size(); ++i) {
@@ -844,7 +1057,7 @@ void ChartEditorWidget::mousePressEvent(QMouseEvent* event) {
 
     if (m_mode == EditMode::Write && m_ntInput && event->button() == Qt::LeftButton) {
         const int col = columnAtX(event->position().x());
-        if (col <= 0) {
+        if (!isColumnEditable(col)) {
             return;
         }
         const bool applySnap = !event->modifiers().testFlag(Qt::ControlModifier);
@@ -855,7 +1068,12 @@ void ChartEditorWidget::mousePressEvent(QMouseEvent* event) {
         for (int i = 0; i < m_doc->notes.size(); ++i) {
             const BmsNote& n = m_doc->notes[i];
             if (n.vPosition < 0.0) continue;
-            if (n.columnIndex == col && std::abs(n.vPosition - vPos) < epsilon) {
+            if (n.columnIndex != col) {
+                continue;
+            }
+            const bool exactHead = std::abs(n.vPosition - vPos) < epsilon;
+            const bool inLongBody = n.length > epsilon && vPos > n.vPosition && vPos < (n.vPosition + n.length);
+            if (exactHead || inLongBody) {
                 hit = i;
                 break;
             }
@@ -935,20 +1153,31 @@ void ChartEditorWidget::mouseMoveEvent(QMouseEvent* event) {
         return;
     }
 
+    bool needsRepaint = false;
     if (event->buttons() == Qt::NoButton) {
-        m_hoverNoteIndex = hitTestNote(event->position());
+        const int newHover = hitTestNote(event->position());
+        if (newHover != m_hoverNoteIndex) {
+            m_hoverNoteIndex = newHover;
+            needsRepaint = true;
+        }
     }
 
     if (m_dragSelecting && m_mode == EditMode::Select) {
-        m_selectRect = QRect(m_selectOrigin, event->position().toPoint()).normalized();
-        selectInRect(m_selectRect, event->modifiers().testFlag(Qt::ControlModifier));
-        emitSelectionChanged();
-        update();
+        const QRect nextRect = QRect(m_selectOrigin, event->position().toPoint()).normalized();
+        if (nextRect != m_selectRect) {
+            m_selectRect = nextRect;
+            selectInRect(m_selectRect, event->modifiers().testFlag(Qt::ControlModifier));
+            emitSelectionChanged();
+            update();
+        }
         return;
     }
 
     if (m_selectDragActive && m_mode == EditMode::Select && (event->buttons() & Qt::LeftButton)) {
-        const int col = std::max(1, columnAtX(event->position().x()));
+        const int col = nearestEnabledColumn(columnAtX(event->position().x()));
+        if (col < 0) {
+            return;
+        }
         double vPos = std::max(0.0, yToVPos(event->position().y(), true));
         if (m_disableVerticalMove) {
             vPos = m_selectDragAnchorVPos;
@@ -984,7 +1213,6 @@ void ChartEditorWidget::mouseMoveEvent(QMouseEvent* event) {
 
         applySelectDragMove(col, vPos);
         m_selectDragMoved = true;
-        updateGeometry();
         update();
         return;
     }
@@ -1070,7 +1298,6 @@ void ChartEditorWidget::mouseMoveEvent(QMouseEvent* event) {
             ensureSorted();
             emitSelectionChanged();
             emit documentEdited();
-            updateGeometry();
             update();
         }
         return;
@@ -1080,10 +1307,17 @@ void ChartEditorWidget::mouseMoveEvent(QMouseEvent* event) {
         const int col = columnAtX(event->position().x());
         const bool applySnap = !event->modifiers().testFlag(Qt::ControlModifier);
         const double v = std::max(0.0, yToVPos(event->position().y(), applySnap));
-        m_hoverValid = col > 0;
+        const bool valid = isColumnEditable(col);
+        const bool hoverChanged =
+            (m_hoverValid != valid) ||
+            (m_hoverColumn != col) ||
+            (std::abs(m_hoverVPos - v) >= 0.0001);
+        m_hoverValid = valid;
         m_hoverColumn = col;
         m_hoverVPos = v;
-        update();
+        if (hoverChanged || needsRepaint) {
+            update();
+        }
         return;
     }
 
@@ -1091,11 +1325,13 @@ void ChartEditorWidget::mouseMoveEvent(QMouseEvent* event) {
         if (applyWriteAt(event->position(), m_writeDragButton, event->modifiers())) {
             emit documentEdited();
         }
-        updateGeometry();
         update();
         return;
     }
 
+    if (needsRepaint) {
+        update();
+    }
     QWidget::mouseMoveEvent(event);
 }
 
@@ -1198,12 +1434,12 @@ void ChartEditorWidget::keyPressEvent(QKeyEvent* event) {
 
     switch (event->key()) {
         case Qt::Key_Delete:
+        case Qt::Key_Backspace:
             if (selectedCount() > 0) {
                 emit aboutToEdit();
                 removeSelectedNotes();
                 emit documentEdited();
                 emitSelectionChanged();
-                updateGeometry();
                 update();
             }
             event->accept();
@@ -1219,12 +1455,6 @@ void ChartEditorWidget::keyPressEvent(QKeyEvent* event) {
             emit aboutToEdit();
             moveSelectedNotes(0, step);
             emit documentEdited();
-            {
-                const QSize s = minimumSizeHint();
-                setMinimumSize(s);
-                resize(s);
-            }
-            updateGeometry();
             update();
             event->accept();
             return;
@@ -1259,11 +1489,26 @@ void ChartEditorWidget::focusInEvent(QFocusEvent* event) {
 }
 
 void ChartEditorWidget::wheelEvent(QWheelEvent* event) {
-    if (event->modifiers().testFlag(Qt::ControlModifier)) {
-        const double delta = event->angleDelta().y() > 0 ? 0.2 : -0.2;
-        m_zoom = std::clamp(m_zoom + delta, 0.8, 10.0);
-        updateGeometry();
-        update();
+    const bool zoomModifier =
+        event->modifiers().testFlag(Qt::ControlModifier) ||
+        event->modifiers().testFlag(Qt::MetaModifier) ||
+        QApplication::keyboardModifiers().testFlag(Qt::ControlModifier) ||
+        QApplication::keyboardModifiers().testFlag(Qt::MetaModifier);
+    if (zoomModifier) {
+        double raw = 0.0;
+        if (!event->pixelDelta().isNull()) {
+            raw = static_cast<double>(event->pixelDelta().y()) / 30.0;
+        } else if (event->angleDelta().y() != 0) {
+            raw = static_cast<double>(event->angleDelta().y()) / 120.0;
+        }
+        raw = std::clamp(raw, -8.0, 8.0);
+        if (std::abs(raw) < 0.0001) {
+            event->accept();
+            return;
+        }
+        captureZoomAnchorFromGlobal(event->globalPosition().toPoint());
+        const double factor = std::exp(raw * 0.12);
+        applyZoomWithAnchor(m_zoom * factor);
         event->accept();
         return;
     }
@@ -1282,11 +1527,26 @@ bool ChartEditorWidget::event(QEvent* event) {
 
     if (event->type() == QEvent::NativeGesture) {
         auto* gesture = static_cast<QNativeGestureEvent*>(event);
+        if (gesture->gestureType() == Qt::BeginNativeGesture) {
+            m_pinchZoomActive = true;
+            captureZoomAnchorFromGlobal(gesture->globalPosition().toPoint());
+            event->accept();
+            return true;
+        }
+        if (gesture->gestureType() == Qt::EndNativeGesture) {
+            m_pinchZoomActive = false;
+            event->accept();
+            return true;
+        }
         if (gesture->gestureType() == Qt::ZoomNativeGesture) {
-            const double delta = gesture->value() * 0.6;
-            m_zoom = std::clamp(m_zoom + delta, 0.8, 10.0);
-            updateGeometry();
-            update();
+            if (!m_pinchZoomActive) {
+                m_pinchZoomActive = true;
+                captureZoomAnchorFromGlobal(gesture->globalPosition().toPoint());
+            }
+            const double delta = std::clamp(gesture->value(), -5.0, 5.0);
+            // macOS pinch semantics: out => positive => zoom in.
+            const double target = m_zoom * std::exp(delta * 0.95);
+            applyZoomWithAnchor(target);
             event->accept();
             return true;
         }

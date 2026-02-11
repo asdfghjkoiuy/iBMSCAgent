@@ -986,4 +986,5 @@ CMakeFiles/iBMSCQt.dir/src/audio/audio_preview_service.cpp.o: \
   /opt/homebrew/lib/QtCore.framework/Headers/qtimezone.h \
   /opt/homebrew/lib/QtCore.framework/Headers/QFileInfo \
   /opt/homebrew/lib/QtMultimedia.framework/Headers/QMediaPlayer \
-  /opt/homebrew/lib/QtMultimedia.framework/Headers/qmediaplayer.h
+  /opt/homebrew/lib/QtMultimedia.framework/Headers/qmediaplayer.h \
+  /opt/homebrew/lib/QtCore.framework/Headers/QMetaObject

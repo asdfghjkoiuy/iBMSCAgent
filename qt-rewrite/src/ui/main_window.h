@@ -82,11 +82,14 @@ private:
     void buildMenus();
     void loadThemes();
     void applyTheme(const Theme& theme);
+    void applyRuntimeColumnVisibility();
 
     void syncHeaderToUi();
     void syncHeaderFromUi();
     void refreshResourceTables();
     void refreshBeatTable();
+    void syncResourceTablesToDocument();
+    void scheduleErrorCheck();
     void updateWindowTitle();
     void pushUndoSnapshot();
     void applyDocumentToEditors();
@@ -107,6 +110,7 @@ private:
     QVector<MyO2Adjustment> myO2GridCheck() const;
     void myO2GridAdjust(const QVector<MyO2Adjustment>& adjustments);
     void applyWaveformOptionsToEditors();
+    void rebuildNoteChannelCombo();
     void clearWaveformOverlay();
     void loadWaveformOverlayFromWavSelection();
 
@@ -114,6 +118,7 @@ private:
     QString nextCodeForTable(const QVector<QString>& table) const;
 
     BmsDocument m_doc;
+    Theme m_baseTheme;
     Theme m_theme;
     bool m_dirty = false;
     bool m_blockEditorSync = false;
@@ -135,6 +140,7 @@ private:
     QLineEdit* m_subartistEdit = nullptr;
     QLineEdit* m_playLevelEdit = nullptr;
     QLineEdit* m_totalEdit = nullptr;
+    QComboBox* m_playerCombo = nullptr;
     QLineEdit* m_stageFileEdit = nullptr;
     QLineEdit* m_bannerEdit = nullptr;
     QLineEdit* m_backBmpEdit = nullptr;
@@ -163,6 +169,7 @@ private:
     QCheckBox* m_cgStop = nullptr;
     QCheckBox* m_cgScroll = nullptr;
     QCheckBox* m_cgBlp = nullptr;
+    QSpinBox* m_bColumnsSpin = nullptr;
     QCheckBox* m_waveLockCheck = nullptr;
     QSpinBox* m_waveWidthSpin = nullptr;
     QSpinBox* m_waveOffsetSpin = nullptr;
@@ -180,10 +187,13 @@ private:
     QAction* m_toggleLeftSplitAction = nullptr;
     QAction* m_toggleRightSplitAction = nullptr;
     QTimer* m_autoSaveTimer = nullptr;
-    bool m_autoSaveEnabled = true;
+    QTimer* m_errorCheckTimer = nullptr;
+    bool m_errorCheckQueued = false;
+    bool m_autoSaveEnabled = false;
     bool m_previewOnClick = false;
     bool m_errorCheckEnabled = true;
     int m_lastValidNoteValue = 1;
+    int m_bColumnCount = 20;
 
     AudioPreviewService m_audio;
 
