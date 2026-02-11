@@ -212,12 +212,12 @@ int ChartEditorWidget::columnAtX(int x) const {
 }
 
 int ChartEditorWidget::vPosToY(double vPos) const {
-    const int baseline = totalHeight() - 60;
+    const int baseline = height() - 60;
     return baseline - static_cast<int>(std::round(vPos * m_zoom));
 }
 
 double ChartEditorWidget::yToVPos(int y, bool applySnap) const {
-    const int baseline = totalHeight() - 60;
+    const int baseline = height() - 60;
     const double maxV = maxEditableVPos();
     const double raw = std::clamp((baseline - y) / m_zoom, 0.0, maxV);
     if (!applySnap || !m_snapEnabled || !m_doc) {
@@ -635,14 +635,25 @@ void ChartEditorWidget::paintEvent(QPaintEvent* event) {
         return;
     }
 
+    const double noteMinV = std::max(0.0, visibleMinV - 64.0);
+    const double noteMaxV = visibleMaxV + 64.0;
+
     for (const BmsNote& note : m_doc->notes) {
-        if (note.vPosition < 0) {
+        if (note.vPosition < 0.0) {
+            continue;
+        }
+        const double tail = note.vPosition + std::max(0.0, note.length);
+        if (tail < noteMinV || note.vPosition > noteMaxV) {
             continue;
         }
         if (!isChannelVisible(note)) {
             continue;
         }
+
         QRect r = noteRect(note);
+        if (!r.intersects(clip.adjusted(-20, -20, 20, 20))) {
+            continue;
+        }
 
         QColor fill = QColor(245, 190, 70, 220);
         if (m_theme && note.columnIndex - 1 >= 0 && note.columnIndex - 1 < m_theme->columns.size()) {
@@ -656,8 +667,10 @@ void ChartEditorWidget::paintEvent(QPaintEvent* event) {
         p.setPen(note.selected ? (m_theme ? m_theme->visual.selected : QColor(255, 255, 0)) : QColor(10, 10, 10));
         p.setBrush(fill);
         p.drawRoundedRect(r, 2, 2);
-        p.setPen(QColor(0, 0, 0));
-        p.drawText(r, Qt::AlignCenter, toBase36Label2(note.value / 10000));
+        if (m_zoom >= 1.2 && r.height() >= 10) {
+            p.setPen(QColor(0, 0, 0));
+            p.drawText(r, Qt::AlignCenter, toBase36Label2(note.value / 10000));
+        }
     }
 
     if (m_mode == EditMode::Select && m_hoverNoteIndex >= 0 && m_hoverNoteIndex < m_doc->notes.size()) {
