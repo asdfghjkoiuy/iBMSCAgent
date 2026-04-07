@@ -117,6 +117,10 @@ void PlayerRenderer::render(const PlayerChart& chart, double currentTime,
         fr(m_renderer, laneX(i), kLaneStartY, laneW(i), kLaneH);
     }
 
+    // ── Clip to lane area so notes never bleed into HUD ───────────────────────
+    SDL_Rect laneClip{kLaneStartX, kLaneStartY, totW, kLaneH};
+    SDL_RenderSetClipRect(m_renderer, &laneClip);
+
     // ── Lane press glow (Pulsus: white * fade, 0.15s fadeout) ────────────────
     SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
     for (int i = 0; i < totalLanes; ++i) {
@@ -167,6 +171,7 @@ void PlayerRenderer::render(const PlayerChart& chart, double currentTime,
     }
 
     // ── Judge line (Pulsus: RGB(191,0,0), height=noteHeight) ─────────────────
+    SDL_RenderSetClipRect(m_renderer, nullptr); // disable clip before judge line + HUD
     SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_NONE);
     SDL_SetRenderDrawColor(m_renderer, 191, 0, 0, 255);
     fr(m_renderer, kLaneStartX, kJudgeY, totW, kNoteH);
