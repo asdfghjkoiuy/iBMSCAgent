@@ -1,8 +1,19 @@
-qt-rewrite/build/CMakeFiles/iBMSCQt_autogen.dir/ParseCache.txt
-
 # macOS
 .DS_Store
 
 # CMake build dirs
 build/
 **/build/
+compile_commands.json
+*.autosave
+*.user
+.gitignore
+.cache/
+.codex/
+.claude/
+.agents/
+.omx/
+docs/
+apply_drag_to_move.sh
+CMakePresets.json
+.clangd
