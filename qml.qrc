@@ -1,0 +1,29 @@
+<RCC>
+  <qresource prefix="/">
+    <file>qml/Main.qml</file>
+    <file>qml/SplashOverlay.qml</file>
+    <file>qml/qtquickcontrols2.conf</file>
+    <file>qml/WelcomeScreen.qml</file>
+    <file>qml/components/Theme.qml</file>
+    <file>qml/components/CollapsiblePanel.qml</file>
+    <file>qml/components/CanvasHeader.qml</file>
+    <file>qml/components/BpmOverlay.qml</file>
+    <file>qml/components/SidebarSection.qml</file>
+    <file>qml/components/ControlBar.qml</file>
+    <file>qml/components/FlatComboBox.qml</file>
+    <file>qml/components/OverflowMenu.qml</file>
+    <file>qml/panels/HeaderPanel.qml</file>
+    <file>qml/panels/WavResourcePanel.qml</file>
+    <file>qml/panels/BmpResourcePanel.qml</file>
+    <file>qml/panels/MeasureLengthPanel.qml</file>
+    <file>qml/panels/SettingsDialog.qml</file>
+    <file>qml/panels/JumpToMeasureDialog.qml</file>
+    <file>qml/panels/FindReplaceDialog.qml</file>
+    <file>qml/panels/ColumnConfigDialog.qml</file>
+    <file>qml/panels/BpmToolsDialog.qml</file>
+    <file>qml/panels/StatisticsDialog.qml</file>
+    <file>qml/panels/EditValueDialog.qml</file>
+    <file>qml/panels/SelectedNotePanel.qml</file>
+    <file>qml/panels/WaveformInspector.qml</file>
+  </qresource>
+</RCC>

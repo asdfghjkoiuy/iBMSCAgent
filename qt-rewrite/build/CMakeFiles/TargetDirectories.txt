@@ -1,5 +1,0 @@
-/Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/build/CMakeFiles/iBMSCQt.dir
-/Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/build/CMakeFiles/edit_cache.dir
-/Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/build/CMakeFiles/rebuild_cache.dir
-/Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/build/CMakeFiles/iBMSCQt_autogen_timestamp_deps.dir
-/Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite/build/CMakeFiles/iBMSCQt_autogen.dir

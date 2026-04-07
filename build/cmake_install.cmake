@@ -1,4 +1,4 @@
-# Install script for directory: /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite
+# Install script for directory: /Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
