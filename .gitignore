@@ -1,5 +1,6 @@
 # macOS
 .DS_Store
+**/.DS_Store
 
 # CMake build dirs
 build/
@@ -16,3 +17,8 @@ docs/
 apply_drag_to_move.sh
 CMakePresets.json
 .clangd
+
+# Reference projects (not part of this repo)
+Pulsus/
+iBMSCPP/
+iBMSCQt/
