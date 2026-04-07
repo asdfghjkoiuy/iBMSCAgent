@@ -245,30 +245,47 @@ void PlayerRenderer::render(const PlayerChart& chart, double currentTime,
         fr(m_renderer, ttCX-2, ttCY-2, 4, 4);
     }
 
-    // ── HUD: speed + FPS (top-left above lanes) ───────────────────────────────
+    // ── HUD: song progress bar (top, full width) ──────────────────────────────
     {
         SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
-        // Speed bar background
-        SDL_SetRenderDrawColor(m_renderer, 15, 15, 15, 200);
-        fr(m_renderer, kLaneStartX, 10, totW, 18);
-        // Speed fill
-        float frac = static_cast<float>(std::clamp(scrollSpeed, 0.5, 9.9) / 9.9);
-        SDL_SetRenderDrawColor(m_renderer, 60, 180, 60, 220);
-        fr(m_renderer, kLaneStartX + 1, 11, static_cast<int>((totW - 2) * frac), 16);
-        // Tick marks at each integer speed
-        SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, 80);
-        for (int t = 1; t < 10; ++t) {
-            int tx = kLaneStartX + static_cast<int>((totW - 2) * t / 9.9f);
-            SDL_RenderDrawLine(m_renderer, tx, 11, tx, 26);
-        }
-        // FPS indicator (right side of speed bar)
-        // Draw as colored dot: green>=100, yellow>=60, red<60
+        // Background
+        SDL_SetRenderDrawColor(m_renderer, 15, 15, 15, 220);
+        fr(m_renderer, kLaneStartX, 6, totW, 18);
+        // Progress fill (white, based on currentTime / totalDuration)
+        double total = chart.totalDuration > 0 ? chart.totalDuration : 1.0;
+        float prog = static_cast<float>(std::clamp(currentTime / total, 0.0, 1.0));
+        SDL_SetRenderDrawColor(m_renderer, 200, 200, 200, 220);
+        fr(m_renderer, kLaneStartX + 1, 7, static_cast<int>((totW - 2) * prog), 16);
+        // Playhead marker
+        int phX = kLaneStartX + 1 + static_cast<int>((totW - 2) * prog);
+        SDL_SetRenderDrawColor(m_renderer, 255, 80, 80, 255);
+        fr(m_renderer, phX - 1, 5, 3, 20);
+        // FPS dot (right of bar)
         Uint8 fr_r = fps >= 100 ? 0   : fps >= 60 ? 200 : 255;
         Uint8 fr_g = fps >= 100 ? 200 : fps >= 60 ? 200 : 50;
-        Uint8 fr_b = 0;
         SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_NONE);
-        SDL_SetRenderDrawColor(m_renderer, fr_r, fr_g, fr_b, 255);
-        fr(m_renderer, kLaneStartX + totW + 4, 10, 8, 18);
+        SDL_SetRenderDrawColor(m_renderer, fr_r, fr_g, 0, 255);
+        fr(m_renderer, kLaneStartX + totW + 4, 6, 8, 18);
+    }
+
+    // ── Left-side time progress bar (vertical, Pulsus-style) ─────────────────
+    {
+        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+        int barX = kLaneStartX - 10;
+        int barH = kLaneH;
+        // Background
+        SDL_SetRenderDrawColor(m_renderer, 20, 20, 20, 200);
+        fr(m_renderer, barX, kLaneStartY, 6, barH);
+        // Fill from bottom (current position)
+        double total = chart.totalDuration > 0 ? chart.totalDuration : 1.0;
+        float prog = static_cast<float>(std::clamp(currentTime / total, 0.0, 1.0));
+        int fillH = static_cast<int>(barH * prog);
+        SDL_SetRenderDrawColor(m_renderer, 100, 180, 255, 200);
+        fr(m_renderer, barX, kLaneStartY + barH - fillH, 6, fillH);
+        // Current position marker
+        int markerY = kLaneStartY + barH - fillH;
+        SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, 255);
+        fr(m_renderer, barX - 1, markerY - 1, 8, 3);
     }
 
     SDL_RenderPresent(m_renderer);
