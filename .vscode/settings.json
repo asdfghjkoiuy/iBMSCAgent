@@ -1,3 +1,17 @@
 {
-    "cmake.sourceDirectory": "/Users/guanhao/VSCodeAlgorithmTrain/CPP/ibmsc/iBMSCAgent/qt-rewrite"
+    // CMake: 顶层 CMakeLists.txt 所在目录
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.configureArgs": [
+        "-DCMAKE_OSX_ARCHITECTURES=arm64",
+        "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DIBMSC_BUILD_APP=ON"
+    ],
+
+    // clangd: 使用项目根目录的 compile_commands.json 符号链接
+    // （指向 build-macos/build-ninja/compile_commands.json）
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build/macos-debug"
+    ]
 }

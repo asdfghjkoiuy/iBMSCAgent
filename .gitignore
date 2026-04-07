@@ -7,7 +7,6 @@ build/
 compile_commands.json
 *.autosave
 *.user
-.gitignore
 .cache/
 .codex/
 .claude/
